@@ -337,7 +337,7 @@
             }
         ];
 
-        let currentLang = localStorage.getItem('pref-lang') || 'zh';
+        let currentLang = localStorage.getItem('pref-lang') || 'en';
 
         function updateContent() {
             // 更新普通文本
@@ -350,7 +350,7 @@
 
             // 更新按鈕文字
             document.getElementById('lang-text').innerText = currentLang === 'zh' ? 'EN' : '中文';
-            document.documentElement.lang = currentLang === 'zh' ? 'zh-Hant' : 'en';
+            document.documentElement.lang = currentLang === 'en' ? 'zh' : 'zh-Hant';
 
             // 更新 App 列表
             renderApps();
