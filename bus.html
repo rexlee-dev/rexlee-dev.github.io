@@ -312,6 +312,13 @@
                 const results = await Promise.all(apiUrls.map(fetchSingleApi));
                 const busDataList = results.filter(item => item !== null);
 
+                // 根據第一班車的到站剩餘時間 (etas[0]) 由小至大排序 (最快到的排最上)
+                busDataList.sort((a, b) => {
+                    const etaA = (a.etas && a.etas.length > 0 && a.etas[0] !== null && a.etas[0] !== undefined) ? a.etas[0] : Infinity;
+                    const etaB = (b.etas && b.etas.length > 0 && b.etas[0] !== null && b.etas[0] !== undefined) ? b.etas[0] : Infinity;
+                    return etaA - etaB;
+                });
+
                 const container = document.getElementById('eta-container');
 
                 if (busDataList.length === 0) {
