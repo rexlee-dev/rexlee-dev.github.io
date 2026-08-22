@@ -2,112 +2,137 @@
 <html lang="zh-HK">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智能巴士到站時間顯示屏</title>
-    <!-- 引入 Tailwind CSS 以進行快速及美觀的樣式設計 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#09090b">
+    <title>巴士到站時間預報</title>
+    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@400;500;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@400;500;700;900&family=Roboto+Mono:wght@500;700&display=swap');
         
         body {
-            font-family: 'Noto Sans HK', sans-serif;
-            background-color: #050505; /* 極深色背景模擬LED屏幕 */
-            color: #ffffff;
+            font-family: 'Noto Sans HK', system-ui, -apple-system, sans-serif;
+            background-color: #09090b; /* OLED 純黑背景，適合手機省電及高對比 */
+            color: #f4f4f5;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        /* 隱藏捲軸但保持可捲動 */
-        ::-webkit-scrollbar {
-            display: none;
-        }
-        
-        .led-text-orange {
-            color: #ff9800;
-            text-shadow: 0 0 10px rgba(255, 152, 0, 0.3);
-        }
-        
-        .led-text-yellow {
-            color: #ffeb3b;
-            text-shadow: 0 0 10px rgba(255, 235, 59, 0.3);
+        .font-mono-num {
+            font-family: 'Roboto Mono', monospace;
         }
 
-        .led-text-red {
-            color: #f44336;
-            text-shadow: 0 0 10px rgba(244, 67, 54, 0.3);
+        /* 模擬 LED 螢光效果 */
+        .led-yellow {
+            color: #facc15;
+            text-shadow: 0 0 12px rgba(250, 204, 21, 0.25);
         }
 
-        /* 更新進度條動畫 */
+        .led-orange {
+            color: #fb923c;
+            text-shadow: 0 0 12px rgba(251, 146, 60, 0.3);
+        }
+
+        .led-red {
+            color: #f87171;
+            text-shadow: 0 0 12px rgba(248, 113, 113, 0.4);
+        }
+
+        /* 頂部進度條動畫 */
         @keyframes progress {
             0% { width: 0%; }
             100% { width: 100%; }
         }
         
-        .progress-bar {
+        .progress-bar-active {
             animation: progress 30s linear infinite;
         }
 
-        /* 脈搏閃爍效果 (用於時鐘冒號或即將抵達提示) */
+        /* 快閃動畫 */
         .animate-pulse-fast {
             animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
         
         @keyframes pulse {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
+            50% { opacity: 0.35; }
+        }
+
+        /* 按鈕點擊反饋 */
+        .active-scale {
+            transition: transform 0.1s ease;
+        }
+        .active-scale:active {
+            transform: scale(0.92);
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col overflow-hidden">
+<body class="min-h-screen flex flex-col justify-between selection:bg-orange-500 selection:text-white pb-safe">
 
-    <!-- 頂部進度條 (顯示30秒更新週期) -->
-    <div class="h-1 w-full bg-zinc-800">
-        <div id="refresh-progress" class="h-full bg-orange-500 progress-bar"></div>
+    <!-- 頂部 30 秒自動刷新進度條 -->
+    <div class="fixed top-0 left-0 right-0 h-1 bg-zinc-900 z-50">
+        <div id="refresh-progress" class="h-full bg-orange-500 progress-bar-active"></div>
     </div>
 
-    <!-- 頂部精簡時鐘列 -->
-    <header class="flex justify-between items-center px-6 py-2 border-b border-zinc-800 bg-zinc-950">
-        <div class="flex items-center gap-2">
-            <div class="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></div>
-            <span class="text-xs text-zinc-500 font-mono">LIVE</span>
-        </div>
-        <div class="flex items-baseline gap-3 text-right">
-            <div id="current-date" class="text-xs text-zinc-400">
-                ----年--月--日
+    <!-- 手機端精簡 Sticky Header -->
+    <header class="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/80 px-4 py-3 pt-4">
+        <div class="max-w-md mx-auto flex items-center justify-between">
+            <!-- 左側：實時狀態指示燈 -->
+            <div class="flex items-center gap-2">
+                <span class="relative flex h-2.5 w-2.5">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+                <span class="text-xs font-bold tracking-wider text-emerald-400 font-mono-num">LIVE</span>
             </div>
-            <div id="current-time" class="text-xl font-bold font-mono tracking-wider text-zinc-200">
-                --<span class="animate-pulse-fast">:</span>--
+
+            <!-- 中間/右側：單行顯示時鐘與手動刷新按鈕 -->
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 text-xs font-mono-num bg-zinc-900/80 px-2.5 py-1 rounded-lg border border-zinc-800/60">
+                    <span id="current-date" class="text-zinc-400 font-medium">----/--/--</span>
+                    <span id="current-time" class="font-bold text-zinc-100 tracking-tight">--:--</span>
+                </div>
+
+                <!-- 手動刷新按鈕 (適合手機觸控) -->
+                <button id="refresh-btn" onclick="fetchBusData()" class="p-2 bg-zinc-900 hover:bg-zinc-800 active-scale border border-zinc-800 rounded-xl text-zinc-300 focus:outline-none" aria-label="刷新數據">
+                    <svg id="refresh-icon" class="w-4 h-4 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                </button>
             </div>
         </div>
     </header>
 
-    <main class="flex-1 p-6 flex flex-col gap-4 max-w-7xl mx-auto w-full">
-        <!-- 列表表頭 -->
-        <div class="grid grid-cols-12 gap-6 px-6 py-2 text-zinc-400 font-bold text-lg border-b-2 border-zinc-800">
-            <div class="col-span-2">路線</div>
-            <div class="col-span-5">目的地</div>
-            <div class="col-span-5 text-right">預計時間</div>
+    <!-- 主要內容區域 -->
+    <main class="flex-1 px-4 py-4 max-w-md mx-auto w-full">
+        <!-- 頂部提示/標題區域 -->
+        <div class="flex items-center justify-between mb-3 px-1">
+            <span class="text-xs font-bold text-zinc-400 uppercase tracking-wider">即時到站預報</span>
+            <span id="last-update-time" class="text-[11px] text-zinc-400 font-mono-num">更新於 --:--:--</span>
         </div>
 
-        <!-- 巴士數據將會透過 JavaScript 注入到這裡 -->
-        <div id="eta-container" class="flex flex-col gap-4">
+        <!-- 巴士數據動態注入容器 -->
+        <div id="eta-container" class="space-y-3.5">
             <!-- 載入中佔位符 -->
-            <div class="flex justify-center items-center py-20 text-zinc-500">
-                <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-orange-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <div class="flex flex-col items-center justify-center py-16 bg-zinc-900/40 border border-zinc-800/80 rounded-2xl">
+                <svg class="animate-spin h-8 w-8 text-orange-500 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                正在載入數據 Loading Data...
+                <p class="text-sm font-medium text-zinc-400">正在獲取最新到站時間...</p>
             </div>
         </div>
     </main>
 
-    <footer class="bg-zinc-950 p-4 text-center border-t border-zinc-800 text-zinc-500 text-sm">
-        <p>系統每 30 秒自動更新數據。實際到站時間受路況影響，僅供參考。</p>
-        <p id="last-update-text" class="mt-1 text-zinc-600">最後更新: --:--:--</p>
+    <!-- 頁尾 -->
+    <footer class="py-4 px-4 text-center border-t border-zinc-900 bg-zinc-950/60 mt-auto">
+        <p class="text-[11px] text-zinc-400 leading-relaxed">
+            每 30 秒自動更新 • 數據源自香港政府開放數據 API
+        </p>
     </footer>
 
     <script>
         // ---------------------------------------------------------
-        // 1. 即時時鐘更新系統
+        // 1. 即時時鐘與日期更新 (單行顯示)
         // ---------------------------------------------------------
         function updateClock() {
             const now = new Date();
@@ -120,85 +145,122 @@
             const dateElem = document.getElementById('current-date');
             const timeElem = document.getElementById('current-time');
 
-            if (dateElem) {
-                dateElem.innerText = `${year}年${month}月${date}日`;
-            }
-            if (timeElem) {
-                timeElem.innerHTML = `${hours}<span class="animate-pulse-fast">:</span>${minutes}`;
-            }
+            if (dateElem) dateElem.innerText = `${year}/${month}/${date}`;
+            if (timeElem) timeElem.innerHTML = `${hours}<span class="animate-pulse-fast">:</span>${minutes}`;
         }
 
-        // 初始化時鐘並每秒更新一次
         updateClock();
         setInterval(updateClock, 1000);
 
         // ---------------------------------------------------------
-        // 2. 數據獲取與渲染系統 (實時 API 串接)
+        // 2. 手機版路線卡片 HTML 生成器 (包含巴士公司標籤)
         // ---------------------------------------------------------
-        
-        // 生成單個路線的 HTML
         function generateRouteHTML(routeData) {
-            const { route, destination, etas } = routeData;
+            const { route, destination, etas, company } = routeData;
             
-            // 處理第一班車 (最重要，放大顯示)
+            // 巴士公司徽章樣式 (城巴黃色系 / 九巴紅色系)
+            let companyTagHtml = '';
+            if (company === '城巴') {
+                companyTagHtml = `<span class="px-1.5 py-0.5 text-[10px] font-extrabold rounded bg-amber-400/20 text-amber-300 border border-amber-400/40 shrink-0">城巴</span>`;
+            } else if (company === '九巴') {
+                companyTagHtml = `<span class="px-1.5 py-0.5 text-[10px] font-extrabold rounded bg-red-500/20 text-red-400 border border-red-500/40 shrink-0">九巴</span>`;
+            } else if (company) {
+                companyTagHtml = `<span class="px-1.5 py-0.5 text-[10px] font-extrabold rounded bg-zinc-800 text-zinc-300 border border-zinc-700 shrink-0">${company}</span>`;
+            }
+
+            // 下一班車 ETA 顯示邏輯
             let nextEtaHtml = '';
             const nextEta = etas[0];
             
             if (nextEta === undefined || nextEta === null || nextEta === "") {
-                nextEtaHtml = `<span class="text-3xl text-zinc-600 font-bold">暫無班次</span>`;
+                nextEtaHtml = `<span class="text-xl font-bold text-zinc-500">暫無班次</span>`;
             } else if (nextEta <= 1) {
-                nextEtaHtml = `<span class="text-4xl led-text-red font-black animate-pulse-fast">即將抵達</span>`;
+                nextEtaHtml = `
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-2xl font-black led-red animate-pulse-fast">即將抵達</span>
+                    </div>`;
             } else {
-                nextEtaHtml = `<span class="text-6xl led-text-orange font-black font-mono tracking-tighter">${nextEta}</span> 
-                               <span class="text-xl text-zinc-400 font-medium ml-1">min</span>`;
+                nextEtaHtml = `
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-4xl font-black led-orange font-mono-num tracking-tight">${nextEta}</span>
+                        <span class="text-xs font-bold text-zinc-400 uppercase">min</span>
+                    </div>`;
             }
 
-            // 處理後續班次 (較小字體)
+            // 後續班次 (Pill 膠囊風格，極適合手機閱讀)
             let subsequentEtasHtml = '';
             if (etas.length > 1) {
-                const subEtas = etas.slice(1).map(eta => {
-                    if (eta === "null" || eta === null || eta === undefined) return "-";
-                    return `${eta} min`;
-                }).join(' , ');
-                
-                subsequentEtasHtml = `<div class="text-zinc-400 text-base mt-2 flex justify-end items-center gap-2">
-                                        <span class="bg-zinc-800 px-2 py-1 rounded text-sm">Next</span> 
-                                        <span class="font-mono text-zinc-300">${subEtas}</span>
-                                      </div>`;
+                const ordinals = ['2nd', '3rd', '4th'];
+                const subEtasPills = etas.slice(1).map((eta, idx) => {
+                    if (eta === null || eta === undefined) return '';
+                    const label = ordinals[idx] || `${idx + 2}th`;
+                    const isSecondBus = idx === 0;
+
+                    return `
+                        <div class="flex items-center gap-1.5">
+                            ${idx > 0 ? `
+                                <svg class="w-3 h-3 text-zinc-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                            ` : ''}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg ${isSecondBus ? 'bg-amber-400/10 border-amber-400/30' : 'bg-zinc-800/80 border-zinc-700/50'} border text-xs font-mono-num">
+                                <span class="text-[10px] font-extrabold ${isSecondBus ? 'text-amber-400' : 'text-zinc-400'} mr-1.5 font-sans">${label}</span>
+                                <strong class="${isSecondBus ? 'text-amber-300' : 'text-zinc-200'} font-bold">${eta}</strong><span class="text-[10px] text-zinc-400 ml-1 font-sans">min</span>
+                            </span>
+                        </div>
+                    `;
+                }).join('');
+
+                subsequentEtasHtml = `
+                    <div class="mt-3 pt-3 border-t border-zinc-800/60 flex items-center justify-between">
+                        <span class="text-[11px] font-medium text-zinc-400">隨後班次</span>
+                        <div class="flex items-center gap-1.5 overflow-x-auto">
+                            ${subEtasPills}
+                        </div>
+                    </div>
+                `;
             }
 
-            // 返回此列的完整 HTML 結構
             return `
-                <div class="grid grid-cols-12 gap-6 items-center px-6 py-5 bg-zinc-900 rounded-2xl shadow-lg border border-zinc-800 hover:border-zinc-700 transition-colors">
-                    <!-- 1. 路線號碼 -->
-                    <div class="col-span-2 flex items-center">
-                        <span class="text-5xl font-black led-text-yellow font-mono italic tracking-tighter">${route}</span>
-                    </div>
-                    
-                    <!-- 2. 目的地 -->
-                    <div class="col-span-5 flex flex-col justify-center">
-                        <span class="text-sm text-zinc-500 uppercase tracking-widest mb-1">往</span>
-                        <span class="text-3xl font-bold text-white tracking-wide">${destination}</span>
-                    </div>
-                    
-                    <!-- 3 & 4. 預計時間 (下一班及後續) -->
-                    <div class="col-span-5 flex flex-col items-end justify-center">
-                        <div class="flex items-baseline justify-end w-full">
+                <div class="bg-zinc-900/90 border border-zinc-800/90 rounded-2xl p-4 shadow-xl relative overflow-hidden transition-all active:border-zinc-700">
+                    <!-- 頂部列：路線牌與目的地 -->
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <!-- 路線號碼徽章 -->
+                            <div class="px-3 py-1.5 bg-amber-400/10 border border-amber-400/30 rounded-xl flex items-center justify-center shrink-0">
+                                <span class="text-2xl font-black led-yellow font-mono-num italic tracking-tighter">${route}</span>
+                            </div>
+                            <!-- 目的地與公司標籤 -->
+                            <div class="flex flex-col min-w-0">
+                                <div class="flex items-center gap-1.5 mb-0.5">
+                                    ${companyTagHtml}
+                                    <span class="text-[10px] font-bold text-zinc-400 tracking-wider">往</span>
+                                </div>
+                                <h2 class="text-lg font-bold text-white truncate tracking-wide leading-tight">${destination}</h2>
+                            </div>
+                        </div>
+
+                        <!-- 下一班預計時間 -->
+                        <div class="text-right shrink-0">
                             ${nextEtaHtml}
                         </div>
-                        ${subsequentEtasHtml}
                     </div>
+
+                    <!-- 下方列：後續班次 -->
+                    ${subsequentEtasHtml}
                 </div>
             `;
         }
 
-        // API URL 列表 (日後有新路線時，只需在這裡新增 URL 即可)
+        // ---------------------------------------------------------
+        // 3. API 數據獲取邏輯
+        // ---------------------------------------------------------
         const apiUrls = [
             'https://rt.data.gov.hk/v1/transport/citybus-nwfb/eta/CTB/002758/970',
-			'https://data.etabus.gov.hk/v1/transport/kmb/eta/A72EB7FC6BB34E40/905/1'
+            'https://rt.data.gov.hk/v1/transport/citybus-nwfb/eta/CTB/001068/905',
+            'https://data.etabus.gov.hk/v1/transport/kmb/eta/A72EB7FC6BB34E40/905/1'
         ];
 
-        // 處理單一 API 請求並解析資料
         async function fetchSingleApi(url) {
             try {
                 const response = await fetch(url);
@@ -207,9 +269,9 @@
                 
                 if (!json.data || json.data.length === 0) return null;
 
-                // 按 eta_seq 排序，數字愈小愈先到站
+                // 依 eta_seq 排序
                 const sortedData = json.data
-                    .filter(item => item.eta) // 過濾未有預計到站時間的數據
+                    .filter(item => item.eta)
                     .sort((a, b) => a.eta_seq - b.eta_seq);
 
                 if (sortedData.length === 0) return null;
@@ -218,24 +280,35 @@
                 const destination = sortedData[0].dest_tc;
                 const now = new Date();
 
-                // 根據 eta 時間與當前時間相減，算出剩餘分鐘數
+                // 根據 URL 判斷巴士公司
+                let company = '';
+                const lowerUrl = url.toLowerCase();
+                if (lowerUrl.includes('citybus')) {
+                    company = '城巴';
+                } else if (lowerUrl.includes('kmb')) {
+                    company = '九巴';
+                }
+
+                // 計算剩餘分鐘數
                 const etas = sortedData.map(item => {
                     const etaTime = new Date(item.eta);
                     const diffMins = Math.floor((etaTime - now) / (1000 * 60));
                     return diffMins < 0 ? 0 : diffMins;
                 });
 
-                return { route, destination, etas };
+                return { route, destination, etas, company };
             } catch (err) {
                 console.error(`獲取 API 數據失敗 (${url}):`, err);
                 return null;
             }
         }
 
-        // 核心獲取數據函數
         async function fetchBusData() {
+            // 觸發刷新圖示旋轉效果
+            const refreshIcon = document.getElementById('refresh-icon');
+            if (refreshIcon) refreshIcon.classList.add('rotate-180');
+
             try {
-                // 並發請求所有 API URL
                 const results = await Promise.all(apiUrls.map(fetchSingleApi));
                 const busDataList = results.filter(item => item !== null);
 
@@ -243,42 +316,44 @@
 
                 if (busDataList.length === 0) {
                     container.innerHTML = `
-                        <div class="p-8 bg-zinc-900 border border-zinc-800 rounded-2xl text-center text-zinc-500">
-                            目前暫無即將到達的班次數據
+                        <div class="p-6 bg-zinc-900/60 border border-zinc-800 rounded-2xl text-center text-zinc-400">
+                            <p class="text-sm font-medium">目前暫無即將到達的班次數據</p>
                         </div>
                     `;
                 } else {
                     container.innerHTML = busDataList.map(generateRouteHTML).join('');
                 }
 
-                // 更新「最後更新時間」文本
+                // 更新最後刷新時間
                 const now = new Date();
                 const timeString = now.toTimeString().split(' ')[0];
-                document.getElementById('last-update-text').innerText = `最後更新 Last Updated: ${timeString}`;
+                document.getElementById('last-update-time').innerText = `更新於 ${timeString}`;
 
-                // 重置頂部的進度條動畫
+                // 重置頂部進度條
                 const progressBar = document.getElementById('refresh-progress');
-                progressBar.style.animation = 'none';
-                progressBar.offsetHeight; // 觸發 reflow 重新繪製
-                progressBar.style.animation = 'progress 30s linear infinite';
+                progressBar.classList.remove('progress-bar-active');
+                void progressBar.offsetWidth; // 觸發 reflow
+                progressBar.classList.add('progress-bar-active');
 
             } catch (error) {
                 console.error("獲取巴士數據失敗:", error);
                 document.getElementById('eta-container').innerHTML = `
-                    <div class="p-6 bg-red-900/20 border border-red-500 rounded-xl text-center">
-                        <p class="text-red-500 text-xl font-bold">無法獲取數據</p>
-                        <p class="text-red-400 mt-2 text-sm">請檢查網絡連線或 API 狀態</p>
+                    <div class="p-5 bg-red-950/30 border border-red-500/40 rounded-2xl text-center">
+                        <p class="text-red-400 text-sm font-bold">無法獲取數據</p>
+                        <p class="text-zinc-500 mt-1 text-xs">請檢查網絡連線或稍後再試</p>
                     </div>
                 `;
+            } finally {
+                setTimeout(() => {
+                    if (refreshIcon) refreshIcon.classList.remove('rotate-180');
+                }, 500);
             }
         }
 
         // ---------------------------------------------------------
-        // 3. 啟動與自動更新 (30秒)
+        // 4. 自動定時器 (30秒)
         // ---------------------------------------------------------
-        fetchBusData(); // 初次載入數據
-        
-        // 設定每 30 秒 (30000 毫秒) 執行一次 fetchBusData
+        fetchBusData();
         setInterval(fetchBusData, 30000);
 
     </script>
