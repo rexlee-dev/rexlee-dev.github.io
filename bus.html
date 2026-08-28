@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#09090b">
     <title>巴士到站時間預報</title>
-    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@400;500;700;900&family=Roboto+Mono:wght@500;700&display=swap');
@@ -68,15 +67,12 @@
 </head>
 <body class="min-h-screen flex flex-col justify-between selection:bg-orange-500 selection:text-white pb-safe">
 
-    <!-- 頂部 30 秒自動刷新進度條 -->
     <div class="fixed top-0 left-0 right-0 h-1 bg-zinc-900 z-50">
         <div id="refresh-progress" class="h-full bg-orange-500 progress-bar-active"></div>
     </div>
 
-    <!-- 手機端精簡 Sticky Header -->
     <header class="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/80 px-4 py-3 pt-4">
         <div class="max-w-md mx-auto flex items-center justify-between">
-            <!-- 左側：實時狀態指示燈 -->
             <div class="flex items-center gap-2">
                 <span class="relative flex h-2.5 w-2.5">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -85,14 +81,12 @@
                 <span class="text-xs font-bold tracking-wider text-emerald-400 font-mono-num">LIVE</span>
             </div>
 
-            <!-- 中間/右側：單行顯示時鐘與手動刷新按鈕 -->
             <div class="flex items-center gap-3">
                 <div class="flex items-center gap-2 text-xs font-mono-num bg-zinc-900/80 px-2.5 py-1 rounded-lg border border-zinc-800/60">
                     <span id="current-date" class="text-zinc-400 font-medium">----/--/--</span>
                     <span id="current-time" class="font-bold text-zinc-100 tracking-tight">--:--</span>
                 </div>
 
-                <!-- 手動刷新按鈕 (適合手機觸控) -->
                 <button id="refresh-btn" onclick="fetchBusData()" class="p-2 bg-zinc-900 hover:bg-zinc-800 active-scale border border-zinc-800 rounded-xl text-zinc-300 focus:outline-none" aria-label="刷新數據">
                     <svg id="refresh-icon" class="w-4 h-4 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
@@ -102,17 +96,13 @@
         </div>
     </header>
 
-    <!-- 主要內容區域 -->
     <main class="flex-1 px-4 py-4 max-w-md mx-auto w-full">
-        <!-- 頂部提示/標題區域 -->
         <div class="flex items-center justify-between mb-3 px-1">
             <span class="text-xs font-bold text-zinc-400 uppercase tracking-wider">即時到站預報</span>
             <span id="last-update-time" class="text-[11px] text-zinc-400 font-mono-num">更新於 --:--:--</span>
         </div>
 
-        <!-- 巴士數據動態注入容器 -->
         <div id="eta-container" class="space-y-3.5">
-            <!-- 載入中佔位符 -->
             <div class="flex flex-col items-center justify-center py-16 bg-zinc-900/40 border border-zinc-800/80 rounded-2xl">
                 <svg class="animate-spin h-8 w-8 text-orange-500 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -123,7 +113,6 @@
         </div>
     </main>
 
-    <!-- 頁尾 -->
     <footer class="py-4 px-4 text-center border-t border-zinc-900 bg-zinc-950/60 mt-auto">
         <p class="text-[11px] text-zinc-400 leading-relaxed">
             每 30 秒自動更新 • 數據源自香港政府開放數據 API
@@ -223,45 +212,55 @@
 
             return `
                 <div class="bg-zinc-900/90 border border-zinc-800/90 rounded-2xl p-4 shadow-xl relative overflow-hidden transition-all active:border-zinc-700">
-                    <!-- 頂部列：路線牌與目的地 -->
                     <div class="flex items-center justify-between gap-3">
                         <div class="flex items-center gap-3 min-w-0">
-                            <!-- 路線號碼徽章 -->
                             <div class="px-3 py-1.5 bg-amber-400/10 border border-amber-400/30 rounded-xl flex items-center justify-center shrink-0">
                                 <span class="text-2xl font-black led-yellow font-mono-num italic tracking-tighter">${route}</span>
                             </div>
-                            <!-- 目的地與公司標籤 -->
                             <div class="flex flex-col min-w-0">
                                 <div class="flex items-center gap-1.5 mb-0.5">
                                     ${companyTagHtml}
-                                    <span class="text-[10px] font-bold text-zinc-400 tracking-wider">往</span>
+                                    <span class="text-[10px] font-bold text-zinc-400 tracking-wider"></span>
                                 </div>
                                 <h2 class="text-lg font-bold text-white truncate tracking-wide leading-tight">${destination}</h2>
                             </div>
                         </div>
 
-                        <!-- 下一班預計時間 -->
                         <div class="text-right shrink-0">
                             ${nextEtaHtml}
                         </div>
                     </div>
 
-                    <!-- 下方列：後續班次 -->
                     ${subsequentEtasHtml}
                 </div>
             `;
         }
 
         // ---------------------------------------------------------
-        // 3. API 數據獲取邏輯
+        // 3. API 數據獲取邏輯 (加入自訂目的地 customDest)
         // ---------------------------------------------------------
-        const apiUrls = [
-            'https://rt.data.gov.hk/v1/transport/citybus-nwfb/eta/CTB/002758/970',
-            'https://rt.data.gov.hk/v1/transport/citybus-nwfb/eta/CTB/001068/905',
-            'https://data.etabus.gov.hk/v1/transport/kmb/eta/A72EB7FC6BB34E40/905/1'
+        const routeConfigs = [
+            {
+                url: 'https://rt.data.gov.hk/v1/transport/citybus-nwfb/eta/CTB/002758/970',
+                customDest: '郵局'
+            },
+            {
+                url: 'https://rt.data.gov.hk/v1/transport/citybus-nwfb/eta/CTB/001068/905',
+                customDest: '日本城'
+            },
+            {
+                url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/A72EB7FC6BB34E40/905/1',
+                customDest: '日本城'
+            }
+			//,
+			//{
+            //    url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/062FFE8F1560E8A4/N271/1',
+            //    customDest: '郵局日本城'
+            //}
         ];
 
-        async function fetchSingleApi(url) {
+        async function fetchSingleApi(config) {
+            const { url, customDest } = config;
             try {
                 const response = await fetch(url);
                 if (!response.ok) return null;
@@ -277,7 +276,10 @@
                 if (sortedData.length === 0) return null;
 
                 const route = sortedData[0].route;
-                const destination = sortedData[0].dest_tc;
+                
+                // 優先使用自訂文字 customDest，如果沒有設定才使用 API 原本的 dest_tc
+                const destination = customDest || sortedData[0].dest_tc;
+                
                 const now = new Date();
 
                 // 根據 URL 判斷巴士公司
@@ -309,7 +311,7 @@
             if (refreshIcon) refreshIcon.classList.add('rotate-180');
 
             try {
-                const results = await Promise.all(apiUrls.map(fetchSingleApi));
+                const results = await Promise.all(routeConfigs.map(fetchSingleApi));
                 const busDataList = results.filter(item => item !== null);
 
                 // 根據第一班車的到站剩餘時間 (etas[0]) 由小至大排序 (最快到的排最上)
