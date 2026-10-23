@@ -14,22 +14,23 @@
             -webkit-text-size-adjust: 100%;
         }
 
+        /* 手機版強調放大賠率 Badge */
         .odds-badge {
             display: inline-block;
-            padding: 3px 8px;
+            padding: 5px 10px;
             border-radius: 6px;
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            font-weight: bold;
+            font-weight: 800;
             text-align: center;
-            min-width: 54px;
-            font-size: 13px;
+            min-width: 62px;
+            font-size: 15px;
         }
 
         .odds-normal { background-color: #f3f4f6; color: #1f2937; }
         .odds-favourite { background-color: #ef4444 !important; color: #ffffff !important; }
         .odds-green { background-color: #10b981 !important; color: #ffffff !important; }
         .odds-brown { background-color: #d97706 !important; color: #ffffff !important; }
-        .odds-scr { background-color: #e5e7eb !important; color: #6b7280 !important; border: 1px solid #d1d5db; font-weight: bold; }
+        .odds-scr { background-color: #e5e7eb !important; color: #6b7280 !important; border: 1px solid #d1d5db; font-weight: bold; font-size: 13px; }
 
         .circle-badge {
             width: 36px;
@@ -87,7 +88,7 @@
     <main class="max-w-7xl mx-auto px-2 md:px-4 py-4 flex-grow w-full">
         
         <!-- ========================================== -->
-        <!-- 1. 手機專用：雙行卡片式檢視 (md螢幕以上隱藏) -->
+        <!-- 1. 手機專用：雙行緊湊卡片 -->
         <!-- ========================================== -->
         <div class="block md:hidden border border-gray-200 rounded-lg shadow-sm bg-white overflow-hidden">
             <div id="mobileRunnersContainer" class="divide-y divide-gray-100">
@@ -96,7 +97,7 @@
         </div>
 
         <!-- ========================================== -->
-        <!-- 2. 電腦專用：標準 Table 檢視 (小於 md 螢幕隱藏) -->
+        <!-- 2. 電腦專用：標準 Table 檢視 (維持 11 欄不變) -->
         <!-- ========================================== -->
         <div class="hidden md:block overflow-x-auto border border-gray-200 rounded-lg shadow-sm bg-white">
             <table class="w-full text-left border-collapse text-sm">
@@ -134,7 +135,7 @@
 
     <!-- 頁尾 -->
     <footer class="bg-white border-t border-gray-200 text-center py-3 text-xs text-gray-400 mt-8">
-        HKJC Real-Time Odds & Racecard Monitor &bull; Adaptive UI Edition
+        HKJC Real-Time Odds & Racecard Monitor &bull; Mobile Optimized Edition
     </footer>
 
     <script>
@@ -384,13 +385,12 @@
             });
         }
 
-        // 同時更新手機版與電腦版的畫面
         function renderRaceViews() {
             renderMobileList();
             renderDesktopTable();
         }
 
-        // 1. 渲染手機版雙行卡片
+        // 1. 渲染手機版專屬雙行卡片（含近績、隱藏評分配備、騎師/練馬師取首字並分兩行、放大賠率）
         function renderMobileList() {
             const container = document.getElementById('mobileRunnersContainer');
             container.innerHTML = '';
@@ -405,9 +405,11 @@
                 const itemDiv = document.createElement('div');
                 const isScr = (r.status === 'SCR' || r.status === 'SCRATCHED' || r.winOdds === 'SCR' || r.plaOdds === 'SCR');
 
-                itemDiv.className = isScr ? "bg-gray-50 p-3 text-gray-400" : "p-3 hover:bg-slate-50 transition";
-                const parsedRating = parseInt(r.rating, 10);
-                const displayRating = (!isNaN(parsedRating) && parsedRating !== 0) ? parsedRating : (r.rating || '-');
+                itemDiv.className = isScr ? "bg-gray-50 p-3 text-gray-400" : "p-3.5 hover:bg-slate-50 transition";
+                
+                // 只取騎師與練馬師的第一個字
+                const shortJockey = (r.jockey && r.jockey !== '-') ? r.jockey.charAt(0) : '-';
+                const shortTrainer = (r.trainer && r.trainer !== '-') ? r.trainer.charAt(0) : '-';
 
                 if (isScr) {
                     itemDiv.innerHTML = `
@@ -423,33 +425,33 @@
                     const winClass = getBadgeClass(r.winStyle);
                     const plaClass = getBadgeClass(r.plaStyle);
                     itemDiv.innerHTML = `
+                        <!-- 第一行：馬號、馬名、強調放大之獨贏與位置賠率 -->
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-2.5 overflow-hidden pr-2">
-                                <span class="font-bold text-gray-900 bg-slate-100 rounded px-1.5 py-0.5 text-xs text-center flex-shrink-0">${r.horseNo}</span>
+                                <span class="font-bold text-gray-900 bg-slate-100 rounded px-2 py-0.5 text-xs text-center flex-shrink-0">${r.horseNo}</span>
                                 <div class="truncate">
-                                    <span class="font-bold text-blue-950 text-sm">${r.horseName}</span>
+                                    <span class="font-bold text-blue-950 text-base">${r.horseName}</span>
                                     <span class="text-[11px] text-gray-400 ml-1">${r.horseNameEn}</span>
                                 </div>
                             </div>
                             <div class="flex items-center space-x-2 flex-shrink-0">
                                 <div class="text-right">
-                                    <span class="text-[10px] text-gray-400 block leading-none mb-0.5">獨</span>
+                                    <span class="text-[10px] text-gray-400 block leading-none mb-0.5 font-bold">獨</span>
                                     <span class="odds-badge ${winClass}">${r.winOdds || '-'}</span>
                                 </div>
                                 <div class="text-right">
-                                    <span class="text-[10px] text-gray-400 block leading-none mb-0.5">位</span>
+                                    <span class="text-[10px] text-gray-400 block leading-none mb-0.5 font-bold">位</span>
                                     <span class="odds-badge ${plaClass}">${r.plaOdds || '-'}</span>
                                 </div>
                             </div>
                         </div>
-                        <div class="mt-1.5 flex items-center space-x-3 text-xs text-gray-600 pl-8 overflow-x-auto no-scrollbar">
+                        <!-- 第二行：檔位、負磅、首字騎師、首字練馬師、近績 -->
+                        <div class="mt-2 flex items-center space-x-3 text-xs text-gray-600 pl-8 overflow-x-auto no-scrollbar">
                             <span>檔: <strong class="text-gray-900">${r.draw}</strong></span>
                             <span>負: <strong class="text-gray-900">${r.weight}</strong></span>
-                            <span class="text-gray-800 font-medium">騎: ${r.jockey}</span>
-                            <span class="text-gray-500">練: ${r.trainer}</span>
-                            <span>評: ${displayRating}</span>
-                            <span class="font-mono text-[11px] bg-gray-100 px-1 rounded">近: ${r.last6run}</span>
-                            ${r.gearInfo ? `<span class="font-bold text-gray-700">配: ${r.gearInfo}</span>` : ''}
+                            <span class="text-gray-800 font-medium bg-gray-100 px-1.5 py-0.5 rounded">騎: ${shortJockey}</span>
+                            <span class="text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">練: ${shortTrainer}</span>
+                            <span class="font-mono text-[11px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">近: ${r.last6run}</span>
                         </div>
                     `;
                 }
@@ -457,7 +459,7 @@
             });
         }
 
-        // 2. 渲染電腦版標準 Table
+        // 2. 渲染電腦版標準 Table (維持不變)
         function renderDesktopTable() {
             const tbody = document.getElementById('desktopRunnersTableBody');
             tbody.innerHTML = '';
