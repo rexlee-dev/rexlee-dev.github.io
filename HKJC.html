@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HKJC Racecard & Real-Time Odds Monitor</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f8fafc;
+            color: #111111;
+        }
+
+        .odds-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-weight: bold;
+            text-align: center;
+            min-width: 58px;
+        }
+
+        .odds-normal { background-color: #f3f4f6; color: #1f2937; }
+        .odds-favourite { background-color: #ef4444 !important; color: #ffffff !important; }
+        .odds-green { background-color: #10b981 !important; color: #ffffff !important; }
+        .odds-brown { background-color: #d97706 !important; color: #ffffff !important; }
+        .odds-scr { background-color: #e5e7eb !important; color: #6b7280 !important; border: 1px solid #d1d5db; font-weight: bold; }
+
+        .circle-badge {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.15s ease-in-out;
+            user-select: none;
+        }
+
+        .circle-badge-inactive { background-color: #e8f0f8; color: #1e293b; }
+        .circle-badge-inactive:hover { background-color: #dbeafe; }
+        .circle-badge-active { background-color: #113273 !important; color: #ffffff !important; box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
+        .race-active-bar { height: 4px; width: 28px; background-color: #65a30d; border-radius: 2px; margin-top: 4px; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col justify-between">
+
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 py-2.5 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-3 h-3 rounded-full bg-blue-900"></div>
+                <h1 class="text-base font-bold tracking-tight text-gray-900">HKJC 賽馬排位與即時賠率監控</h1>
+                <span id="connectionStatus" class="inline-block w-2.5 h-2.5 rounded-full bg-yellow-500" title="連線中..."></span>
+            </div>
+
+            <div class="flex items-center space-x-3 text-xs text-gray-500">
+                <span id="lastUpdateTime">最後更新: --:--:--</span>
+                <button onclick="fetchFullData()" class="bg-blue-950 text-white px-3 py-1 rounded-md text-xs font-medium hover:bg-blue-900 transition shadow-sm">
+                    即時重刷
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white border-t border-gray-200">
+            <div class="max-w-7xl mx-auto px-4 py-2 flex items-center overflow-x-auto no-scrollbar">
+                <div id="meetingsContainer" class="flex items-center space-x-2 pr-4 border-r border-gray-300 flex-shrink-0"></div>
+                <div id="raceTabsContainer" class="flex items-center space-x-3 pl-4 flex-shrink-0"></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full">
+        <div class="overflow-x-auto border border-gray-200 rounded-lg shadow-sm bg-white">
+            <table class="w-full text-left border-collapse text-sm">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-700 text-xs uppercase tracking-wider border-b border-gray-200 whitespace-nowrap">
+                        <th class="py-2.5 px-3 text-center min-w-[50px]">馬號</th>
+                        <th class="py-2.5 px-3">馬名</th>
+                        <th class="py-2.5 px-3 text-center min-w-[50px]">檔位</th>
+                        <th class="py-2.5 px-3 text-center">負磅</th>
+                        <th class="py-2.5 px-3">騎師</th>
+                        <th class="py-2.5 px-3">練馬師</th>
+                        <th class="py-2.5 px-3 text-center">評分</th>
+                        <th class="py-2.5 px-3 text-center">近績</th>
+                        <th class="py-2.5 px-3 text-center">配備</th>
+                        <th class="py-2.5 px-3 text-right font-bold">獨贏</th>
+                        <th class="py-2.5 px-3 text-right font-bold">位置</th>
+                    </tr>
+                </thead>
+                <tbody id="runnersTableBody" class="divide-y divide-gray-200 bg-white whitespace-nowrap">
+                    <tr>
+                        <td colspan="11" class="text-center py-8 text-gray-400">請稍候，正在載入賽事數據...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-8 border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+            <h3 class="text-xs font-bold uppercase text-gray-700 mb-2">常用馬匹配備代號說明 (Gear Reference)</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 text-xs text-gray-600">
+                <div><span class="font-bold text-black">B:</span> 戴眼罩</div>
+                <div><span class="font-bold text-black">BO:</span> 戴單邊眼罩</div>
+                <div><span class="font-bold text-black">H:</span> 戴頭罩</div>
+                <div><span class="font-bold text-black">P:</span> 戴防砂眼罩</div>
+                <div><span class="font-bold text-black">TT:</span> 綁舌帶</div>
+                <div><span class="font-bold text-black">SR:</span> 羊毛面箍</div>
+                <div><span class="font-bold text-black">XB:</span> 交叉鼻箍</div>
+                <div><span class="font-bold text-black">PC:</span> 開縫眼罩</div>
+                <div><span class="font-bold text-black">PS:</span> 遮眼頭罩</div>
+                <div><span class="font-bold text-black">E:</span> 戴耳塞</div>
+                <div><span class="font-bold text-black">V:</span> 戴開縫頭罩</div>
+                <div><span class="font-bold text-black">CP:</span> 羊毛眉眼罩</div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-white border-t border-gray-200 text-center py-4 text-xs text-gray-500 mt-12">
+        HKJC Real-Time Odds & Racecard Monitor &bull; Minimalist UI Edition
+    </footer>
+
+    <script>
+        const BACKEND_URL = 'https://hkjc-backend.onrender.com'; // 請替換成你的 Render 網址
+
+        let currentMeetingDate = '2026-10-25';
+        let currentVenueCode = 'ST';
+        let meetingsList = [];
+        let selectedRaceIndex = 0;
+        let globalRacesData = [];
+        let autoRefreshTimer = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadMeetingsConfig();
+            startAutoRefresh(15);
+        });
+
+        // 動態設定輪詢頻率（非香港本地賽事自動延長至 25 秒）
+        function startAutoRefresh(intervalSeconds = 15) {
+            if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+
+            const isLocalMeeting = (currentVenueCode === 'ST' || currentVenueCode === 'HV');
+            const actualInterval = isLocalMeeting ? intervalSeconds : 25;
+
+            console.log(`[Auto-Refresh] Venue: ${currentVenueCode}, IsLocal: ${isLocalMeeting}, Interval: ${actualInterval}s`);
+
+            autoRefreshTimer = setInterval(() => {
+                fetchCurrentRaceOdds();
+            }, actualInterval * 1000);
+        }
+
+        async function loadMeetingsConfig() {
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/meetings`);
+                const data = await res.json();
+                
+                if (data.status === 'success' && data.meetings.length > 0) {
+                    meetingsList = data.meetings;
+                    currentMeetingDate = meetingsList[0].date;
+                    currentVenueCode = meetingsList[0].venue;
+                }
+            } catch (err) {
+                console.error('無法載入 meetings.json 賽事清單:', err);
+                meetingsList = [
+                    { date: "2026-10-24", venue: "S1", name: "S1" },
+                    { date: "2026-10-25", venue: "ST", name: "田" },
+                    { date: "2026-10-25", venue: "S2", name: "S2" }
+                ];
+            }
+            renderMeetingBadges();
+            fetchFullData();
+        }
+
+        function renderMeetingBadges() {
+            const container = document.getElementById('meetingsContainer');
+            container.innerHTML = '';
+
+            meetingsList.forEach(m => {
+                const isSelected = (m.date === currentMeetingDate && m.venue === currentVenueCode);
+                
+                let displayName = m.venue;
+                if (m.venue === 'ST') displayName = '田';
+                if (m.venue === 'HV') displayName = '谷';
+
+                const badge = document.createElement('div');
+                badge.className = `circle-badge ${isSelected ? 'circle-badge-active' : 'circle-badge-inactive'}`;
+                badge.textContent = displayName;
+                badge.title = `${m.date} (${m.venue})`;
+
+                badge.onclick = () => {
+                    if (currentMeetingDate !== m.date || currentVenueCode !== m.venue) {
+                        currentMeetingDate = m.date;
+                        currentVenueCode = m.venue;
+                        selectedRaceIndex = 0;
+                        renderMeetingBadges();
+                        fetchFullData();
+                        startAutoRefresh(15); // 切換會館時依據是否本地自動重新設定秒數
+                    }
+                };
+
+                container.appendChild(badge);
+            });
+        }
+
+        async function fetchFullData() {
+            const statusIndicator = document.getElementById('connectionStatus');
+            const oddsUrl = `${BACKEND_URL}/api/odds?date=${currentMeetingDate}&venue=${currentVenueCode}`;
+
+            try {
+                const res = await fetch(oddsUrl);
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    globalRacesData = data.races || [];
+                    statusIndicator.className = "inline-block w-2.5 h-2.5 rounded-full bg-green-500";
+                    statusIndicator.title = "已連線";
+                    
+                    renderRaceTabs();
+                    renderRaceTable();
+                    fetchCurrentRaceOdds();
+
+                    const now = new Date();
+                    document.getElementById('lastUpdateTime').textContent = `最後更新: ${now.toTimeString().split(' ')[0]}`;
+                } else {
+                    handleNoData(data.message || '暫無賽事資料');
+                }
+            } catch (err) {
+                console.error('連線錯誤:', err);
+                statusIndicator.className = "inline-block w-2.5 h-2.5 rounded-full bg-red-500";
+                statusIndicator.title = "連線失敗";
+                handleNoData('無法連接後端伺服器');
+            }
+        }
+
+        async function fetchCurrentRaceOdds() {
+            if (globalRacesData.length === 0 || !globalRacesData[selectedRaceIndex]) return;
+
+            const currentRaceNo = globalRacesData[selectedRaceIndex].raceNo;
+            const poolUrl = `${BACKEND_URL}/api/pool-odds?date=${currentMeetingDate}&venue=${currentVenueCode}&raceNo=${currentRaceNo}`;
+
+            try {
+                const res = await fetch(poolUrl);
+                // 遇到 502 或異常時跳過不處理，保留舊數據避免畫面崩潰
+                if (!res.ok) {
+                    console.warn(`[Auto-Refresh Warning] HTTP Status ${res.status}, keeping current data.`);
+                    return;
+                }
+
+                const data = await res.json();
+                const pmPools = data?.data?.raceMeetings?.[0]?.pmPools || [];
+                
+                const winMap = {};
+                const plaMap = {};
+                const normalizeNo = (str) => String(str || '').replace(/^0+/, '').trim();
+
+                pmPools.forEach(pool => {
+                    if (pool.oddsNodes) {
+                        pool.oddsNodes.forEach(node => {
+                            const key = normalizeNo(node.combString);
+                            if (key) {
+                                const oddsInfo = {
+                                    value: node.oddsValue,
+                                    style: getOddsStyle(node)
+                                };
+
+                                if (pool.oddsType === 'WIN') winMap[key] = oddsInfo;
+                                else if (pool.oddsType === 'PLA') plaMap[key] = oddsInfo;
+                            }
+                        });
+                    }
+                });
+
+                const runners = globalRacesData[selectedRaceIndex].runners;
+                runners.forEach(r => {
+                    const key = normalizeNo(r.horseNo);
+                    r.winOdds = winMap[key] ? winMap[key].value : '-';
+                    r.winStyle = winMap[key] ? winMap[key].style : 'normal';
+                    r.plaOdds = plaMap[key] ? plaMap[key].value : '-';
+                    r.plaStyle = plaMap[key] ? plaMap[key].style : 'normal';
+                });
+
+                renderRaceTable();
+                const now = new Date();
+                document.getElementById('lastUpdateTime').textContent = `最後更新: ${now.toTimeString().split(' ')[0]}`;
+            } catch (err) {
+                console.warn('自動更新賠率失敗（網絡或 502），保持當前數據:', err);
+            }
+        }
+
+        function getOddsStyle(node) {
+            if (node.hotFavourite) return 'favourite';
+            if (node.oddsDropValue >= 2) return 'brown';
+            if (node.oddsDropValue === 1) return 'green';
+            return 'normal';
+        }
+
+        function handleNoData(msg) {
+            document.getElementById('raceTabsContainer').innerHTML = '';
+            document.getElementById('runnersTableBody').innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-500 font-medium">${msg}</td></tr>`;
+        }
+
+        function renderRaceTabs() {
+            const container = document.getElementById('raceTabsContainer');
+            container.innerHTML = '';
+
+            globalRacesData.forEach((race, idx) => {
+                const isSelected = (idx === selectedRaceIndex);
+
+                const wrapper = document.createElement('div');
+                wrapper.className = "flex flex-col items-center cursor-pointer";
+
+                const badge = document.createElement('div');
+                badge.className = `circle-badge ${isSelected ? 'circle-badge-active' : 'circle-badge-inactive'}`;
+                badge.textContent = race.raceNo;
+
+                const activeBar = document.createElement('div');
+                activeBar.className = isSelected ? "race-active-bar" : "h-1 w-7 mt-1 bg-transparent";
+
+                wrapper.onclick = () => {
+                    selectedRaceIndex = idx;
+                    renderRaceTabs();
+                    renderRaceTable();
+                    fetchCurrentRaceOdds();
+                };
+
+                wrapper.appendChild(badge);
+                wrapper.appendChild(activeBar);
+                container.appendChild(wrapper);
+            });
+        }
+
+        function renderRaceTable() {
+            const tbody = document.getElementById('runnersTableBody');
+            tbody.innerHTML = '';
+
+            if (globalRacesData.length === 0 || !globalRacesData[selectedRaceIndex]) {
+                tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-400">此賽事暫無出賽馬匹記錄</td></tr>`;
+                return;
+            }
+
+            const currentRace = globalRacesData[selectedRaceIndex];
+            const runners = currentRace.runners || [];
+
+            runners.forEach(r => {
+                const tr = document.createElement('tr');
+
+                const isScr = (
+                    r.status === 'SCR' || 
+                    r.status === 'SCRATCHED' || 
+                    r.winOdds === 'SCR' || 
+                    r.plaOdds === 'SCR'
+                );
+
+                tr.className = isScr 
+                    ? "bg-gray-50 border-b border-gray-100" 
+                    : "hover:bg-gray-50 transition border-b border-gray-100";
+
+                const parsedRating = parseInt(r.rating, 10);
+                const displayRating = (!isNaN(parsedRating) && parsedRating !== 0) ? parsedRating : (r.rating || '-');
+
+                if (isScr) {
+                    // 退出馬匹：馬名變灰色，中間 7 個欄位 colspan="7" 跨欄置中顯示 "(退出)"
+                    tr.innerHTML = `
+                        <td class="py-2.5 px-3 text-center font-bold text-gray-400">${r.horseNo}</td>
+                        <td class="py-2.5 px-3 font-medium text-gray-400">
+                            ${r.horseName} <span class="text-xs font-normal text-gray-300 ml-1">${r.horseNameEn}</span>
+                        </td>
+                        <td colspan="7" class="py-2.5 px-3 text-center text-gray-400 text-xs font-medium tracking-wide">(退出)</td>
+                        <td class="py-2.5 px-3 text-right"><span class="odds-badge odds-scr">退出</span></td>
+                        <td class="py-2.5 px-3 text-right"><span class="odds-badge odds-scr">退出</span></td>
+                    `;
+                } else {
+                    const winClass = getBadgeClass(r.winStyle);
+                    const plaClass = getBadgeClass(r.plaStyle);
+
+                    tr.innerHTML = `
+                        <td class="py-2.5 px-3 text-center font-bold text-gray-900">${r.horseNo}</td>
+                        <td class="py-2.5 px-3 font-semibold text-blue-950">
+                            ${r.horseName} <span class="text-xs font-normal text-gray-400 ml-1">${r.horseNameEn}</span>
+                        </td>
+                        <td class="py-2.5 px-3 text-center text-gray-700 font-medium">${r.draw}</td>
+                        <td class="py-2.5 px-3 text-center text-gray-700">${r.weight}</td>
+                        <td class="py-2.5 px-3 text-gray-800">${r.jockey}</td>
+                        <td class="py-2.5 px-3 text-gray-700 text-xs">${r.trainer}</td>
+                        <td class="py-2.5 px-3 text-center text-gray-700">${displayRating}</td>
+                        <td class="py-2.5 px-3 text-center text-xs text-gray-600 font-mono">${r.last6run}</td>
+                        <td class="py-2.5 px-3 text-center text-xs text-mono font-bold text-gray-700">${r.gearInfo}</td>
+                        <td class="py-2.5 px-3 text-right"><span class="odds-badge ${winClass}">${r.winOdds || '-'}</span></td>
+                        <td class="py-2.5 px-3 text-right"><span class="odds-badge ${plaClass}">${r.plaOdds || '-'}</span></td>
+                    `;
+                }
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        function getBadgeClass(style) {
+            if (style === 'favourite') return 'odds-favourite';
+            if (style === 'brown') return 'odds-brown';
+            if (style === 'green') return 'odds-green';
+            return 'odds-normal';
+        }
+    </script>
+</body>
+</html>
