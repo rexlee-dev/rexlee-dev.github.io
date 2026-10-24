@@ -1,8 +1,3 @@
-沒問題！既然要取消動態呼叫外部的 `RacingGearConfig.json` 避免 CORS 限制或多餘請求，直接改用 **Hardcode 陣列** 來渲染配備對照說明最穩陣。
-
-以下是為你更新後的完整 **`index.html`**（已完全移除外部 `fetchRacingGearConfig()` 呼叫，直接內嵌常用馬匹配備代號）：
-
-```html
 <!DOCTYPE html>
 <html lang="zh-HK">
 <head>
@@ -494,5 +489,3 @@
     </script>
 </body>
 </html>
-
-```
