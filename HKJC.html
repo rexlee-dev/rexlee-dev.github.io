@@ -1,3 +1,8 @@
+沒問題！既然要取消動態呼叫外部的 `RacingGearConfig.json` 避免 CORS 限制或多餘請求，直接改用 **Hardcode 陣列** 來渲染配備對照說明最穩陣。
+
+以下是為你更新後的完整 **`index.html`**（已完全移除外部 `fetchRacingGearConfig()` 呼叫，直接內嵌常用馬匹配備代號）：
+
+```html
 <!DOCTYPE html>
 <html lang="zh-HK">
 <head>
@@ -124,11 +129,11 @@
             </table>
         </div>
 
-        <!-- 馬匹配備說明區塊 -->
+        <!-- 馬匹配備說明區塊 (Hardcode) -->
         <div class="mt-6 border border-gray-200 rounded-lg p-3 md:p-4 bg-white shadow-sm">
             <h3 class="text-xs font-bold uppercase text-gray-700 mb-2">常用馬匹配備代號說明 (Gear Reference)</h3>
             <div id="gearConfigContainer" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 text-xs text-gray-600">
-                <div class="col-span-full text-gray-400">載入配備對照資料中...</div>
+                <!-- 由 renderDefaultGearConfig 直接渲染 -->
             </div>
         </div>
     </main>
@@ -150,7 +155,7 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             loadMeetingsConfig();
-            fetchRacingGearConfig();
+            renderDefaultGearConfig(); // 直接渲染 Hardcode 配備
             startAutoRefresh(15);
         });
 
@@ -164,56 +169,21 @@
             }, actualInterval * 1000);
         }
 
-        async function fetchRacingGearConfig() {
-            const gearApiUrl = 'https://bet.hkjc.com/Config/RacingGearConfig.json';
-            try {
-                const res = await fetch(gearApiUrl);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-                renderGearConfig(data);
-            } catch (err) {
-                renderDefaultGearConfig();
-            }
-        }
-
-        function renderGearConfig(configData) {
-            const container = document.getElementById('gearConfigContainer');
-            container.innerHTML = '';
-            let items = [];
-            if (Array.isArray(configData)) {
-                items = configData;
-            } else if (configData && typeof configData === 'object') {
-                items = configData.gears || configData.gearList || configData.items || [];
-                if (items.length === 0) {
-                    items = Object.keys(configData).map(key => ({
-                        code: key,
-                        name: typeof configData[key] === 'string' ? configData[key] : (configData[key].name_ch || configData[key].name || key)
-                    }));
-                }
-            }
-            if (items.length === 0) {
-                renderDefaultGearConfig();
-                return;
-            }
-            items.forEach(item => {
-                const code = item.code || item.gearCode || item.id || '';
-                const name = item.name_ch || item.name || item.desc_ch || item.description || '';
-                if (code) {
-                    const div = document.createElement('div');
-                    div.innerHTML = `<span class="font-bold text-black">${code}:</span> ${name}`;
-                    container.appendChild(div);
-                }
-            });
-        }
-
+        // Hardcode 馬匹配備代號說明
         function renderDefaultGearConfig() {
             const defaults = [
-                { code: "B", name: "戴眼罩" }, { code: "BO", name: "戴單邊眼罩" },
-                { code: "H", name: "戴頭罩" }, { code: "P", name: "戴防砂眼罩" },
-                { code: "TT", name: "綁舌帶" }, { code: "SR", name: "羊毛面箍" },
-                { code: "XB", name: "交叉鼻箍" }, { code: "PC", name: "開縫眼罩" },
-                { code: "PS", name: "遮眼頭罩" }, { code: "E", name: "戴耳塞" },
-                { code: "V", name: "戴開縫頭罩" }, { code: "CP", name: "羊毛眉眼罩" }
+                { code: "B", name: "戴眼罩" },
+                { code: "BO", name: "戴單邊眼罩" },
+                { code: "H", name: "戴頭罩" },
+                { code: "P", name: "戴防砂眼罩" },
+                { code: "TT", name: "綁舌帶" },
+                { code: "SR", name: "羊毛面箍" },
+                { code: "XB", name: "交叉鼻箍" },
+                { code: "PC", name: "開縫眼罩" },
+                { code: "PS", name: "遮眼頭罩" },
+                { code: "E", name: "戴耳塞" },
+                { code: "V", name: "戴開縫頭罩" },
+                { code: "CP", name: "羊毛眉眼罩" }
             ];
             const container = document.getElementById('gearConfigContainer');
             container.innerHTML = '';
@@ -345,17 +315,22 @@
             }
         }
 
+        // 根據 oddsDropValue (>20 淺綠, >50 棕啡) 判斷顏色
         function getOddsStyle(node) {
             if (node.hotFavourite) return 'favourite';
-            if (node.oddsDropValue >= 2) return 'brown';
-            if (node.oddsDropValue === 1) return 'green';
+            
+            const dropVal = parseFloat(node.oddsDropValue);
+            if (!isNaN(dropVal)) {
+                if (dropVal > 50) return 'brown';  // 大於 50 顯示棕啡色
+                if (dropVal > 20) return 'green';  // 大於 20 顯示淺綠色
+            }
             return 'normal';
         }
 
         function handleNoData(msg) {
             document.getElementById('raceTabsContainer').innerHTML = '';
             document.getElementById('mobileRunnersContainer').innerHTML = `<div class="text-center py-8 text-gray-500 font-medium text-sm">${msg}</div>`;
-            document.getElementById('desktopRunnersTableBody').innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-500 font-medium">${msg}</td></tr>`;
+            document.getElementById('desktopRunnersTableBody').innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-500 font-medium">此賽事暫無出賽馬匹記錄</td></tr>`;
         }
 
         function renderRaceTabs() {
@@ -390,7 +365,7 @@
             renderDesktopTable();
         }
 
-        // 1. 渲染手機版專屬雙行卡片（含近績、隱藏評分配備、騎師/練馬師取首字並分兩行、放大賠率）
+        // 1. 渲染手機版專屬雙行卡片
         function renderMobileList() {
             const container = document.getElementById('mobileRunnersContainer');
             container.innerHTML = '';
@@ -407,7 +382,6 @@
 
                 itemDiv.className = isScr ? "bg-gray-50 p-3 text-gray-400" : "p-3.5 hover:bg-slate-50 transition";
                 
-                // 只取騎師與練馬師的第一個字
                 const shortJockey = (r.jockey && r.jockey !== '-') ? r.jockey.charAt(0) : '-';
                 const shortTrainer = (r.trainer && r.trainer !== '-') ? r.trainer.charAt(0) : '-';
 
@@ -425,7 +399,7 @@
                     const winClass = getBadgeClass(r.winStyle);
                     const plaClass = getBadgeClass(r.plaStyle);
                     itemDiv.innerHTML = `
-                        <!-- 第一行：馬號、馬名、強調放大之獨贏與位置賠率 -->
+                        <!-- 第一行：馬號、馬名、放大賠率 -->
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-2.5 overflow-hidden pr-2">
                                 <span class="font-bold text-gray-900 bg-slate-100 rounded px-2 py-0.5 text-xs text-center flex-shrink-0">${r.horseNo}</span>
@@ -445,7 +419,7 @@
                                 </div>
                             </div>
                         </div>
-                        <!-- 第二行：檔位、負磅、首字騎師、首字練馬師、近績 -->
+                        <!-- 第二行：檔位、負磅、騎師首字、練馬師首字、近績 -->
                         <div class="mt-2 flex items-center space-x-3 text-xs text-gray-600 pl-8 overflow-x-auto no-scrollbar">
                             <span>檔: <strong class="text-gray-900">${r.draw}</strong></span>
                             <span>負: <strong class="text-gray-900">${r.weight}</strong></span>
@@ -459,7 +433,7 @@
             });
         }
 
-        // 2. 渲染電腦版標準 Table (維持不變)
+        // 2. 渲染電腦版標準 Table
         function renderDesktopTable() {
             const tbody = document.getElementById('desktopRunnersTableBody');
             tbody.innerHTML = '';
@@ -520,3 +494,5 @@
     </script>
 </body>
 </html>
+
+```
