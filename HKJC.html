@@ -86,30 +86,29 @@
                 </div>
 
                 <!-- 第二行：賽事詳細資訊與狀態 Banner (分離式設計) -->
-				<div class="flex flex-wrap items-center justify-between gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 text-xs shadow-sm">
-					<!-- 詳細賽事資訊 (僅限本地賽事 ST/HV 顯示) -->
-					<div id="scrapedRaceMeta" class="hidden flex items-center flex-wrap gap-x-2 gap-y-1">
-						<span id="metaRaceName" class="text-blue-950 font-bold text-sm">--</span>
-						<span class="text-gray-300">|</span>
-						<span id="metaPostTime" class="text-emerald-700 font-bold">開跑: --:--</span>
-						<span class="text-gray-300">|</span>
-						<span id="metaDistance" class="text-gray-700">--</span>
-						<span class="text-gray-300">|</span>
-						<span id="metaClass" class="text-amber-700 font-medium">--</span>
-						<!-- 💡 新增：賽道、獎金、評分 -->
-						<span class="text-gray-300">|</span>
-						<span id="metaTrack" class="text-purple-700">--</span>
-						<span class="text-gray-300">|</span>
-						<span id="metaRating" class="text-gray-600">--</span>
-						<span class="text-gray-300">|</span>
-						<span id="metaPrize" class="text-gray-600">--</span>
-					</div>
-					
-					<!-- 醒目賽事狀態 Banner -->
-					<div id="currentRaceStatusBanner" class="text-xs font-bold px-3 py-1 bg-gray-200 text-gray-800 rounded-md shadow-sm">
-						狀態: 載入中...
-					</div>
-				</div>
+                <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 text-xs shadow-sm">
+                    <!-- 詳細賽事資訊 (僅限本地賽事 ST/HV 顯示) -->
+                    <div id="scrapedRaceMeta" class="hidden flex items-center flex-wrap gap-x-2 gap-y-1">
+                        <span id="metaRaceName" class="text-blue-950 font-bold text-sm">--</span>
+                        <span class="text-gray-300">|</span>
+                        <span id="metaPostTime" class="text-emerald-700 font-bold">開跑: --:--</span>
+                        <span class="text-gray-300">|</span>
+                        <span id="metaDistance" class="text-gray-700">--</span>
+                        <span class="text-gray-300">|</span>
+                        <span id="metaClass" class="text-amber-700 font-medium">--</span>
+                        <span class="text-gray-300">|</span>
+                        <span id="metaTrack" class="text-purple-700">--</span>
+                        <span class="text-gray-300">|</span>
+                        <span id="metaRating" class="text-gray-600">--</span>
+                        <span class="text-gray-300">|</span>
+                        <span id="metaPrize" class="text-gray-600">--</span>
+                    </div>
+                    
+                    <!-- 醒目賽事狀態 Banner -->
+                    <div id="currentRaceStatusBanner" class="text-xs font-bold px-3 py-1 bg-gray-200 text-gray-800 rounded-md shadow-sm">
+                        狀態: 載入中...
+                    </div>
+                </div>
 
             </div>
         </div>
@@ -314,19 +313,22 @@
                 const result = await res.json();
 
                 if (result.status === 'success' && result.data) {
-					const d = result.data;
-					document.getElementById('metaRaceName').textContent = d.raceName || '-';
-					document.getElementById('metaPostTime').textContent = `開跑: ${d.postTime || '-'}`;
-					document.getElementById('metaDistance').textContent = d.distance || '-';
-					document.getElementById('metaClass').textContent = d.raceClass || '-';
-					
-					// 💡 渲染新增的詳細資訊
-					document.getElementById('metaTrack').textContent = d.track || '-';
-					document.getElementById('metaRating').textContent = d.rating || '-';
-					document.getElementById('metaPrize').textContent = d.prize || '-';
+                    const d = result.data;
+                    document.getElementById('metaRaceName').textContent = d.raceName || '-';
+                    
+                    // 💡 防護處理：確保 time 格式正確，避免抓到分隔符 `|`
+                    const validTime = (d.postTime && d.postTime.includes(':')) ? d.postTime : '-';
+                    document.getElementById('metaPostTime').textContent = `開跑: ${validTime}`;
+                    
+                    document.getElementById('metaDistance').textContent = d.distance || '-';
+                    document.getElementById('metaClass').textContent = d.raceClass || '-';
+                    
+                    document.getElementById('metaTrack').textContent = d.track || '-';
+                    document.getElementById('metaRating').textContent = d.rating || '-';
+                    document.getElementById('metaPrize').textContent = d.prize || '-';
 
-					metaContainer.classList.remove('hidden');
-				}
+                    metaContainer.classList.remove('hidden');
+                }
             } catch (err) {
                 console.warn('獲取網頁賽事爬蟲資訊失敗:', err);
                 metaContainer.classList.add('hidden');
@@ -398,7 +400,7 @@
             
             const banner = document.getElementById('currentRaceStatusBanner');
             banner.textContent = '狀態: 無資料';
-            banner.className = 'text-xs font-bold px-3 py-1 bg-gray-200 text-gray-700 rounded-md self-start sm:self-center';
+            banner.className = 'text-xs font-bold px-3 py-1 bg-gray-200 text-gray-700 rounded-md shadow-sm';
         }
 
         function renderRaceTabs() {
@@ -421,7 +423,14 @@
                     renderRaceTabs();
                     renderRaceViews();
                     fetchCurrentRaceOdds();
-                    fetchScrapedRaceMeta(); // 切換場次時同時重新抓取該場次爬蟲詳細資料
+                    fetchScrapedRaceMeta();
+
+                    // 💡 切換場次時自動將捲軸歸零至最頂
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    const mobileContainer = document.getElementById('mobileRunnersContainer')?.parentElement;
+                    if (mobileContainer) mobileContainer.scrollTop = 0;
+                    const desktopTableWrapper = document.querySelector('.overflow-x-auto');
+                    if (desktopTableWrapper) desktopTableWrapper.scrollTop = 0;
                 };
                 wrapper.appendChild(badge);
                 wrapper.appendChild(activeBar);
