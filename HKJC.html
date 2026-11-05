@@ -184,6 +184,16 @@
             startAutoRefresh(15);
         });
 
+        // 💡 統一的重置捲軸至頂端函數
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'instant' });
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+
+            const desktopTableWrapper = document.querySelector('.overflow-x-auto');
+            if (desktopTableWrapper) desktopTableWrapper.scrollTop = 0;
+        }
+
         function startAutoRefresh(intervalSeconds = 15) {
             if (autoRefreshTimer) clearInterval(autoRefreshTimer);
             const isLocalMeeting = (currentVenueCode === 'ST' || currentVenueCode === 'HV');
@@ -257,6 +267,7 @@
                         currentVenueCode = m.venue;
                         selectedRaceIndex = 0;
                         renderMeetingBadges();
+                        scrollToTop(); // 💡 切換賽事（田/谷/S1）時強制視窗回到最頂
                         fetchFullData();
                         startAutoRefresh(15);
                     }
@@ -316,7 +327,6 @@
                     const d = result.data;
                     document.getElementById('metaRaceName').textContent = d.raceName || '-';
                     
-                    // 💡 防護處理：確保 time 格式正確，避免抓到分隔符 `|`
                     const validTime = (d.postTime && d.postTime.includes(':')) ? d.postTime : '-';
                     document.getElementById('metaPostTime').textContent = `開跑: ${validTime}`;
                     
@@ -422,15 +432,9 @@
                     selectedRaceIndex = idx;
                     renderRaceTabs();
                     renderRaceViews();
+                    scrollToTop(); // 💡 切換場次（1, 2, 3...）時自動將捲軸歸零至最頂
                     fetchCurrentRaceOdds();
                     fetchScrapedRaceMeta();
-
-                    // 💡 切換場次時自動將捲軸歸零至最頂
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                    const mobileContainer = document.getElementById('mobileRunnersContainer')?.parentElement;
-                    if (mobileContainer) mobileContainer.scrollTop = 0;
-                    const desktopTableWrapper = document.querySelector('.overflow-x-auto');
-                    if (desktopTableWrapper) desktopTableWrapper.scrollTop = 0;
                 };
                 wrapper.appendChild(badge);
                 wrapper.appendChild(activeBar);
