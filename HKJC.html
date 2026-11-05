@@ -77,15 +77,33 @@
 
         <!-- 賽事切換工具列與醒目狀態標籤 -->
         <div class="bg-white border-t border-gray-200">
-            <div class="max-w-7xl mx-auto px-3 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div class="flex items-center overflow-x-auto no-scrollbar space-x-3">
+            <div class="max-w-7xl mx-auto px-3 py-2 flex flex-col gap-2">
+                
+                <!-- 第一行：場地/日選單 + 場次按鈕 (全部靠左對齊，可左右捲動) -->
+                <div class="flex items-center justify-start overflow-x-auto no-scrollbar py-1 space-x-3">
                     <div id="meetingsContainer" class="flex items-center space-x-2 pr-3 border-r border-gray-200 flex-shrink-0"></div>
                     <div id="raceTabsContainer" class="flex items-center space-x-2 flex-shrink-0"></div>
                 </div>
-                <!-- 醒目賽事狀態 Banner -->
-                <div id="currentRaceStatusBanner" class="text-xs font-bold px-3 py-1 bg-gray-200 text-gray-800 rounded-md self-start sm:self-center transition-all duration-200 shadow-sm">
-                    狀態: 載入中...
+
+                <!-- 第二行：賽事詳細資訊與狀態 Banner (分離式設計) -->
+                <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 text-xs shadow-sm">
+                    <!-- 詳細賽事資訊 (僅限本地賽事 ST/HV 顯示) -->
+                    <div id="scrapedRaceMeta" class="hidden flex items-center flex-wrap gap-x-2 gap-y-1">
+                        <span id="metaRaceName" class="text-blue-950 font-bold text-sm">--</span>
+                        <span class="text-gray-300">|</span>
+                        <span id="metaPostTime" class="text-emerald-700 font-bold">開跑: --:--</span>
+                        <span class="text-gray-300">|</span>
+                        <span id="metaDistance" class="text-gray-700">--</span>
+                        <span class="text-gray-300">|</span>
+                        <span id="metaClass" class="text-amber-700 font-medium">--</span>
+                    </div>
+                    
+                    <!-- 醒目賽事狀態 Banner (不論本地或海外賽事均保證顯示) -->
+                    <div id="currentRaceStatusBanner" class="text-xs font-bold px-3 py-1 bg-gray-200 text-gray-800 rounded-md shadow-sm">
+                        狀態: 載入中...
+                    </div>
                 </div>
+
             </div>
         </div>
     </header>
@@ -147,7 +165,7 @@
     <script>
         const BACKEND_URL = 'https://hkjc-backend.troulungble.workers.dev';
 
-        let currentMeetingDate = '2026-10-25';
+        let currentMeetingDate = '2026-11-08';
         let currentVenueCode = 'ST';
         let meetingsList = [];
         let selectedRaceIndex = 0;
@@ -205,9 +223,8 @@
                 }
             } catch (err) {
                 meetingsList = [
-                    { date: "2026-10-24", venue: "S1", name: "S1" },
-                    { date: "2026-10-25", venue: "ST", name: "田" },
-                    { date: "2026-10-25", venue: "S2", name: "S2" }
+                    { date: "2026-11-08", venue: "ST", name: "沙田 (ST)" },
+                    { date: "2026-11-04", venue: "HV", name: "跑馬地 (HV)" }
                 ];
             }
             renderMeetingBadges();
@@ -258,6 +275,9 @@
                     renderRaceViews();
                     fetchCurrentRaceOdds();
 
+                    // 同步獲取當前選中場次的網頁爬蟲詳細資料 (僅限本地賽事 ST/HV)
+                    fetchScrapedRaceMeta();
+
                     const now = new Date();
                     document.getElementById('lastUpdateTime').textContent = `最後更新: ${now.toTimeString().split(' ')[0]}`;
                 } else {
@@ -266,6 +286,39 @@
             } catch (err) {
                 statusIndicator.className = "inline-block w-2 h-2 rounded-full bg-red-500";
                 handleNoData('無法連接後端伺服器');
+            }
+        }
+
+        // 呼叫後端 /api/scrape-race 取得本地詳細賽事資料
+        async function fetchScrapedRaceMeta() {
+            const metaContainer = document.getElementById('scrapedRaceMeta');
+            const isLocal = (currentVenueCode === 'ST' || currentVenueCode === 'HV');
+
+            if (!isLocal || globalRacesData.length === 0 || !globalRacesData[selectedRaceIndex]) {
+                metaContainer.classList.add('hidden');
+                return;
+            }
+
+            const currentRaceNo = globalRacesData[selectedRaceIndex].raceNo;
+            const scrapeUrl = `${BACKEND_URL}/api/scrape-race?date=${currentMeetingDate}&venue=${currentVenueCode}&raceNo=${currentRaceNo}`;
+
+            try {
+                const res = await fetch(scrapeUrl);
+                const result = await res.json();
+
+                if (result.status === 'success' && result.data) {
+                    const d = result.data;
+                    document.getElementById('metaRaceName').textContent = d.raceName || '-';
+                    document.getElementById('metaPostTime').textContent = `開跑: ${d.postTime || '-'}`;
+                    document.getElementById('metaDistance').textContent = d.distance || '-';
+                    document.getElementById('metaClass').textContent = d.raceClass || '-';
+                    metaContainer.classList.remove('hidden');
+                } else {
+                    metaContainer.classList.add('hidden');
+                }
+            } catch (err) {
+                console.warn('獲取網頁賽事爬蟲資訊失敗:', err);
+                metaContainer.classList.add('hidden');
             }
         }
 
@@ -330,6 +383,7 @@
             document.getElementById('raceTabsContainer').innerHTML = '';
             document.getElementById('mobileRunnersContainer').innerHTML = `<div class="text-center py-8 text-gray-500 font-medium text-sm">${msg}</div>`;
             document.getElementById('desktopRunnersTableBody').innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-500 font-medium">此賽事暫無出賽馬匹記錄</td></tr>`;
+            document.getElementById('scrapedRaceMeta').classList.add('hidden');
             
             const banner = document.getElementById('currentRaceStatusBanner');
             banner.textContent = '狀態: 無資料';
@@ -356,6 +410,7 @@
                     renderRaceTabs();
                     renderRaceViews();
                     fetchCurrentRaceOdds();
+                    fetchScrapedRaceMeta(); // 切換場次時同時重新抓取該場次爬蟲詳細資料
                 };
                 wrapper.appendChild(badge);
                 wrapper.appendChild(activeBar);
@@ -369,79 +424,69 @@
             renderDesktopTable();
         }
 
-        // 💡 依據 status 精準渲染狀態文字與醒目顏色 (已移除多餘的 "第 X 場狀態:")
-function renderRaceStatusBanner() {
-    const banner = document.getElementById('currentRaceStatusBanner');
-    if (globalRacesData.length === 0 || !globalRacesData[selectedRaceIndex]) {
-        banner.textContent = '--';
-        banner.className = 'text-xs font-bold px-3 py-1 bg-gray-200 text-gray-700 rounded-md self-start sm:self-center';
-        return;
-    }
+        // 依據 status 精準渲染狀態文字與醒目顏色
+        function renderRaceStatusBanner() {
+            const banner = document.getElementById('currentRaceStatusBanner');
+            if (globalRacesData.length === 0 || !globalRacesData[selectedRaceIndex]) {
+                banner.textContent = '--';
+                banner.className = 'text-xs font-bold px-3 py-1 bg-gray-200 text-gray-700 rounded-md shadow-sm';
+                return;
+            }
 
-    const race = globalRacesData[selectedRaceIndex];
-    const rawStatus = race.status ? race.status.toUpperCase() : "SCHEDULED";
-    let statusText = "";
-    let colorClass = "bg-gray-100 text-gray-800"; // 預設顏色
+            const race = globalRacesData[selectedRaceIndex];
+            const rawStatus = race.status ? race.status.toUpperCase() : "SCHEDULED";
+            let statusText = "";
+            let colorClass = "bg-gray-100 text-gray-800";
 
-    if (rawStatus === "RESULT") {
-        // 1. RESULT = 已派彩 (綠色醒目)
-        colorClass = "bg-emerald-600 text-white font-extrabold shadow-sm";
-        const topRunners = (race.runners || [])
-            .filter(r => r.finalPosition && !isNaN(r.finalPosition) && r.finalPosition >= 1 && r.finalPosition <= 4)
-            .sort((a, b) => parseInt(a.finalPosition) - parseInt(b.finalPosition));
-        
-        if (topRunners.length > 0) {
-            const placingNos = topRunners.map(r => r.horseNo).join(', ');
-            statusText = `已派彩 (${placingNos})`;
-        } else {
-            statusText = "已派彩";
-        }
-
-    } else if (rawStatus === "DECLARED") {
-        // 2. DECLARED = 尚未接受投注 (紅色醒目)
-        colorClass = "bg-red-600 text-white font-extrabold shadow-sm";
-        statusText = "尚未接受投注";
-
-    } else {
-        // 其他狀態處理
-        switch (rawStatus) {
-            case "SCHEDULED":
-            case "UPCOMING":
-                colorClass = "bg-gray-200 text-gray-800";
+            if (rawStatus === "RESULT") {
+                colorClass = "bg-emerald-600 text-white font-extrabold shadow-sm";
+                const topRunners = (race.runners || [])
+                    .filter(r => r.finalPosition && !isNaN(r.finalPosition) && r.finalPosition >= 1 && r.finalPosition <= 4)
+                    .sort((a, b) => parseInt(a.finalPosition) - parseInt(b.finalPosition));
+                
+                if (topRunners.length > 0) {
+                    const placingNos = topRunners.map(r => r.horseNo).join(', ');
+                    statusText = `已派彩 (${placingNos})`;
+                } else {
+                    statusText = "已派彩";
+                }
+            } else if (rawStatus === "DECLARED") {
+                colorClass = "bg-red-600 text-white font-extrabold shadow-sm";
                 statusText = "尚未接受投注";
-                break;
+            } else {
+                switch (rawStatus) {
+                    case "SCHEDULED":
+                    case "UPCOMING":
+                        colorClass = "bg-gray-200 text-gray-800";
+                        statusText = "尚未接受投注";
+                        break;
+                    case "OPEN":
+                    case "SELLING":
+                    case "NORMAL":
+                        colorClass = "bg-blue-600 text-white font-bold";
+                        statusText = "接受投注";
+                        break;
+                    case "CLOSED":
+                    case "SUSPENDED":
+                    case "LOCKED":
+                        colorClass = "bg-amber-600 text-white font-bold";
+                        statusText = "截止投注";
+                        break;
+                    case "COMPLETED":
+                    case "OFF":
+                        colorClass = "bg-purple-600 text-white font-bold";
+                        statusText = "賽事完成 (等待派彩)";
+                        break;
+                    default:
+                        colorClass = "bg-gray-100 text-gray-800";
+                        statusText = race.status;
+                        break;
+                }
+            }
 
-            case "OPEN":
-            case "SELLING":
-            case "NORMAL":
-                colorClass = "bg-blue-600 text-white font-bold";
-                statusText = "接受投注";
-                break;
-
-            case "CLOSED":
-            case "SUSPENDED":
-            case "LOCKED":
-                colorClass = "bg-amber-600 text-white font-bold";
-                statusText = "截止投注";
-                break;
-
-            case "COMPLETED":
-            case "OFF":
-                colorClass = "bg-purple-600 text-white font-bold";
-                statusText = "賽事完成 (等待派彩)";
-                break;
-
-            default:
-                colorClass = "bg-gray-100 text-gray-800";
-                statusText = race.status;
-                break;
+            banner.textContent = statusText;
+            banner.className = `text-xs px-3 py-1 rounded-md transition-all duration-200 ${colorClass}`;
         }
-    }
-
-    // 直接輸出乾淨的狀態字串
-    banner.textContent = statusText;
-    banner.className = `text-xs px-3 py-1 rounded-md self-start sm:self-center transition-all duration-200 ${colorClass}`;
-}
 
         // 1. 渲染手機版專屬雙行卡片
         function renderMobileList() {
@@ -572,5 +617,3 @@ function renderRaceStatusBanner() {
     </script>
 </body>
 </html>
-
-```
