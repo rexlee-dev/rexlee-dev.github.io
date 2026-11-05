@@ -75,11 +75,17 @@
             </div>
         </div>
 
-        <!-- 賽事切換工具列 -->
+        <!-- 賽事切換工具列與醒目狀態標籤 -->
         <div class="bg-white border-t border-gray-200">
-            <div class="max-w-7xl mx-auto px-3 py-2 flex items-center overflow-x-auto no-scrollbar space-x-3">
-                <div id="meetingsContainer" class="flex items-center space-x-2 pr-3 border-r border-gray-200 flex-shrink-0"></div>
-                <div id="raceTabsContainer" class="flex items-center space-x-2 flex-shrink-0"></div>
+            <div class="max-w-7xl mx-auto px-3 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div class="flex items-center overflow-x-auto no-scrollbar space-x-3">
+                    <div id="meetingsContainer" class="flex items-center space-x-2 pr-3 border-r border-gray-200 flex-shrink-0"></div>
+                    <div id="raceTabsContainer" class="flex items-center space-x-2 flex-shrink-0"></div>
+                </div>
+                <!-- 醒目賽事狀態 Banner -->
+                <div id="currentRaceStatusBanner" class="text-xs font-bold px-3 py-1 bg-gray-200 text-gray-800 rounded-md self-start sm:self-center transition-all duration-200 shadow-sm">
+                    狀態: 載入中...
+                </div>
             </div>
         </div>
     </header>
@@ -150,7 +156,7 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             loadMeetingsConfig();
-            renderDefaultGearConfig(); // 直接渲染 Hardcode 配備
+            renderDefaultGearConfig();
             startAutoRefresh(15);
         });
 
@@ -164,7 +170,6 @@
             }, actualInterval * 1000);
         }
 
-        // Hardcode 馬匹配備代號說明
         function renderDefaultGearConfig() {
             const defaults = [
                 { code: "B", name: "戴眼罩" },
@@ -310,14 +315,13 @@
             }
         }
 
-        // 根據 oddsDropValue (>20 淺綠, >50 棕啡) 判斷顏色
         function getOddsStyle(node) {
             if (node.hotFavourite) return 'favourite';
             
             const dropVal = parseFloat(node.oddsDropValue);
             if (!isNaN(dropVal)) {
-                if (dropVal > 50) return 'brown';  // 大於 50 顯示棕啡色
-                if (dropVal > 20) return 'green';  // 大於 20 顯示淺綠色
+                if (dropVal > 50) return 'brown';
+                if (dropVal > 20) return 'green';
             }
             return 'normal';
         }
@@ -326,6 +330,10 @@
             document.getElementById('raceTabsContainer').innerHTML = '';
             document.getElementById('mobileRunnersContainer').innerHTML = `<div class="text-center py-8 text-gray-500 font-medium text-sm">${msg}</div>`;
             document.getElementById('desktopRunnersTableBody').innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-500 font-medium">此賽事暫無出賽馬匹記錄</td></tr>`;
+            
+            const banner = document.getElementById('currentRaceStatusBanner');
+            banner.textContent = '狀態: 無資料';
+            banner.className = 'text-xs font-bold px-3 py-1 bg-gray-200 text-gray-700 rounded-md self-start sm:self-center';
         }
 
         function renderRaceTabs() {
@@ -356,9 +364,84 @@
         }
 
         function renderRaceViews() {
+            renderRaceStatusBanner();
             renderMobileList();
             renderDesktopTable();
         }
+
+        // 💡 依據 status 精準渲染狀態文字與醒目顏色 (已移除多餘的 "第 X 場狀態:")
+function renderRaceStatusBanner() {
+    const banner = document.getElementById('currentRaceStatusBanner');
+    if (globalRacesData.length === 0 || !globalRacesData[selectedRaceIndex]) {
+        banner.textContent = '--';
+        banner.className = 'text-xs font-bold px-3 py-1 bg-gray-200 text-gray-700 rounded-md self-start sm:self-center';
+        return;
+    }
+
+    const race = globalRacesData[selectedRaceIndex];
+    const rawStatus = race.status ? race.status.toUpperCase() : "SCHEDULED";
+    let statusText = "";
+    let colorClass = "bg-gray-100 text-gray-800"; // 預設顏色
+
+    if (rawStatus === "RESULT") {
+        // 1. RESULT = 已派彩 (綠色醒目)
+        colorClass = "bg-emerald-600 text-white font-extrabold shadow-sm";
+        const topRunners = (race.runners || [])
+            .filter(r => r.finalPosition && !isNaN(r.finalPosition) && r.finalPosition >= 1 && r.finalPosition <= 4)
+            .sort((a, b) => parseInt(a.finalPosition) - parseInt(b.finalPosition));
+        
+        if (topRunners.length > 0) {
+            const placingNos = topRunners.map(r => r.horseNo).join(', ');
+            statusText = `已派彩 (${placingNos})`;
+        } else {
+            statusText = "已派彩";
+        }
+
+    } else if (rawStatus === "DECLARED") {
+        // 2. DECLARED = 尚未接受投注 (紅色醒目)
+        colorClass = "bg-red-600 text-white font-extrabold shadow-sm";
+        statusText = "尚未接受投注";
+
+    } else {
+        // 其他狀態處理
+        switch (rawStatus) {
+            case "SCHEDULED":
+            case "UPCOMING":
+                colorClass = "bg-gray-200 text-gray-800";
+                statusText = "尚未接受投注";
+                break;
+
+            case "OPEN":
+            case "SELLING":
+            case "NORMAL":
+                colorClass = "bg-blue-600 text-white font-bold";
+                statusText = "接受投注";
+                break;
+
+            case "CLOSED":
+            case "SUSPENDED":
+            case "LOCKED":
+                colorClass = "bg-amber-600 text-white font-bold";
+                statusText = "截止投注";
+                break;
+
+            case "COMPLETED":
+            case "OFF":
+                colorClass = "bg-purple-600 text-white font-bold";
+                statusText = "賽事完成 (等待派彩)";
+                break;
+
+            default:
+                colorClass = "bg-gray-100 text-gray-800";
+                statusText = race.status;
+                break;
+        }
+    }
+
+    // 直接輸出乾淨的狀態字串
+    banner.textContent = statusText;
+    banner.className = `text-xs px-3 py-1 rounded-md self-start sm:self-center transition-all duration-200 ${colorClass}`;
+}
 
         // 1. 渲染手機版專屬雙行卡片
         function renderMobileList() {
@@ -489,3 +572,5 @@
     </script>
 </body>
 </html>
+
+```
