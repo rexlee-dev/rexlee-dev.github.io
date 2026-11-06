@@ -374,14 +374,26 @@
                     }
                 });
 
-                const runners = globalRacesData[selectedRaceIndex].runners;
+                                const runners = globalRacesData[selectedRaceIndex].runners;
+                let gotValidOdds = false;
+                
                 runners.forEach(r => {
                     const key = normalizeNo(r.horseNo);
                     r.winOdds = winMap[key] ? winMap[key].value : '-';
                     r.winStyle = winMap[key] ? winMap[key].style : 'normal';
                     r.plaOdds = plaMap[key] ? plaMap[key].value : '-';
                     r.plaStyle = plaMap[key] ? plaMap[key].style : 'normal';
+
+                    if (r.winOdds && r.winOdds !== '-' && r.winOdds !== 'SCR') {
+                        gotValidOdds = true;
+                    }
                 });
+
+                // 💡 如果這場馬有有效賠率，直接記入 Cache，確保不再誤判為未開售
+                if (gotValidOdds) {
+                    const cacheKey = `${currentMeetingDate}_${currentVenueCode}_${globalRacesData[selectedRaceIndex].raceNo}`;
+                    openedRacesCache[cacheKey] = true;
+                }
 
                 renderRaceViews();
                 const now = new Date();
@@ -448,9 +460,8 @@
             renderDesktopTable();
         }
 
-                
-                // 依據 status 及是否有賠率來精準渲染狀態文字與顏色
-        function renderRaceStatusBanner() {
+
+                function renderRaceStatusBanner() {
             const banner = document.getElementById('currentRaceStatusBanner');
             if (globalRacesData.length === 0 || !globalRacesData[selectedRaceIndex]) {
                 banner.textContent = '--';
@@ -461,14 +472,16 @@
             const race = globalRacesData[selectedRaceIndex];
             const rawStatus = race.status ? race.status.toUpperCase() : "SCHEDULED";
             
-            // 💡 判斷：是否有有效獨贏賠率
+            const cacheKey = `${currentMeetingDate}_${currentVenueCode}_${race.raceNo}`;
             const hasOdds = race.runners && race.runners.some(r => r.winOdds && r.winOdds !== '-' && r.winOdds !== 'SCR');
             
+            // 💡 雙重保險：只要當前有賠率 OR 歷史曾經被記錄過已經開售，就判定為「接受投注」
+            const isSelling = hasOdds || openedRacesCache[cacheKey];
+
             let statusText = "";
             let colorClass = "bg-gray-100 text-gray-800";
 
             if (rawStatus === "RESULT") {
-                // 1. 已派彩 -> 綠色
                 colorClass = "bg-emerald-600 text-white font-extrabold shadow-sm";
                 const topRunners = (race.runners || [])
                     .filter(r => r.finalPosition && !isNaN(r.finalPosition) && r.finalPosition >= 1 && r.finalPosition <= 4)
@@ -480,8 +493,8 @@
                 } else {
                     statusText = "已派彩";
                 }
-            } else if (hasOdds) {
-                // 2. 接受投注 -> 藍色
+            } else if (isSelling) {
+                // 藍色：接受投注 (包括曾經開售過的場次，防止輪詢時變紅色)
                 colorClass = "bg-blue-600 text-white font-bold shadow-sm";
                 statusText = "接受投注";
             } else {
@@ -489,21 +502,14 @@
                     case "SCHEDULED":
                     case "UPCOMING":
                     case "DECLARED":
-                        // 3. 尚未接受投注 -> 紅色
+                        // 紅色：尚未接受投注
                         colorClass = "bg-red-600 text-white font-bold shadow-sm";
                         statusText = "尚未接受投注";
-                        break;
-                    case "OPEN":
-                    case "SELLING":
-                    case "NORMAL":
-                        // (無賠率但狀態為售賣時的備用機制) -> 藍色
-                        colorClass = "bg-blue-600 text-white font-bold shadow-sm";
-                        statusText = "接受投注";
                         break;
                     case "CLOSED":
                     case "SUSPENDED":
                     case "LOCKED":
-                        // 4. 截止投注 -> 橙/棕色
+                        // 橙色：截止投注
                         colorClass = "bg-amber-600 text-white font-bold shadow-sm";
                         statusText = "截止投注";
                         break;
@@ -522,6 +528,7 @@
             banner.textContent = statusText;
             banner.className = `text-xs px-3 py-1 rounded-md transition-all duration-200 ${colorClass}`;
         }
+
 
 
         // 1. 渲染手機版專屬雙行卡片
