@@ -448,7 +448,8 @@
             renderDesktopTable();
         }
 
-                // 依據 status 及有沒有賠率來精準渲染狀態文字與醒目顏色
+                
+                // 依據 status 及是否有賠率來精準渲染狀態文字與顏色
         function renderRaceStatusBanner() {
             const banner = document.getElementById('currentRaceStatusBanner');
             if (globalRacesData.length === 0 || !globalRacesData[selectedRaceIndex]) {
@@ -460,13 +461,14 @@
             const race = globalRacesData[selectedRaceIndex];
             const rawStatus = race.status ? race.status.toUpperCase() : "SCHEDULED";
             
-            // 💡 核心判斷：如果排位 API 狀態是 DECLARED 或 SCHEDULED，但馬匹已經有抓到賠率，就代表已經「接受投注」
+            // 💡 判斷：是否有有效獨贏賠率
             const hasOdds = race.runners && race.runners.some(r => r.winOdds && r.winOdds !== '-' && r.winOdds !== 'SCR');
             
             let statusText = "";
             let colorClass = "bg-gray-100 text-gray-800";
 
             if (rawStatus === "RESULT") {
+                // 1. 已派彩 -> 綠色
                 colorClass = "bg-emerald-600 text-white font-extrabold shadow-sm";
                 const topRunners = (race.runners || [])
                     .filter(r => r.finalPosition && !isNaN(r.finalPosition) && r.finalPosition >= 1 && r.finalPosition <= 4)
@@ -479,32 +481,35 @@
                     statusText = "已派彩";
                 }
             } else if (hasOdds) {
-                // 有賠率即強制顯示「接受投注」
-                colorClass = "bg-blue-600 text-white font-bold";
+                // 2. 接受投注 -> 藍色
+                colorClass = "bg-blue-600 text-white font-bold shadow-sm";
                 statusText = "接受投注";
             } else {
                 switch (rawStatus) {
                     case "SCHEDULED":
                     case "UPCOMING":
                     case "DECLARED":
-                        colorClass = "bg-gray-200 text-gray-800";
+                        // 3. 尚未接受投注 -> 紅色
+                        colorClass = "bg-red-600 text-white font-bold shadow-sm";
                         statusText = "尚未接受投注";
                         break;
                     case "OPEN":
                     case "SELLING":
                     case "NORMAL":
-                        colorClass = "bg-blue-600 text-white font-bold";
+                        // (無賠率但狀態為售賣時的備用機制) -> 藍色
+                        colorClass = "bg-blue-600 text-white font-bold shadow-sm";
                         statusText = "接受投注";
                         break;
                     case "CLOSED":
                     case "SUSPENDED":
                     case "LOCKED":
-                        colorClass = "bg-amber-600 text-white font-bold";
+                        // 4. 截止投注 -> 橙/棕色
+                        colorClass = "bg-amber-600 text-white font-bold shadow-sm";
                         statusText = "截止投注";
                         break;
                     case "COMPLETED":
                     case "OFF":
-                        colorClass = "bg-purple-600 text-white font-bold";
+                        colorClass = "bg-purple-600 text-white font-bold shadow-sm";
                         statusText = "賽事完成 (等待派彩)";
                         break;
                     default:
