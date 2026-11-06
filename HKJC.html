@@ -86,31 +86,35 @@
                 </div>
 
                 <!-- 第二行：賽事詳細資訊與狀態 Banner -->
-<div class="flex flex-wrap items-center justify-between gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 text-xs shadow-sm">
-    <!-- 詳細賽事資訊 -->
-    <div id="scrapedRaceMeta" class="hidden flex items-center flex-wrap gap-x-2 gap-y-1">
-        <!-- 💡 新增：賽事日期與星期 -->
-        <span id="metaMeetingDate" class="text-blue-900 font-extrabold text-sm">--</span>
-        <span class="text-gray-300">|</span>
-        <span id="metaRaceName" class="text-blue-950 font-bold text-sm">--</span>
-        <span class="text-gray-300">|</span>
-        <span id="metaPostTime" class="text-emerald-700 font-bold">開跑: --:--</span>
-        <!-- ... 其餘保持不變 ... -->
-        <span class="text-gray-300">|</span>
-                        <span id="metaDistance" class="text-gray-700">--</span>
-                        <span class="text-gray-300">|</span>
-                        <span id="metaClass" class="text-amber-700 font-medium">--</span>
-                        <span class="text-gray-300">|</span>
-                        <span id="metaTrack" class="text-purple-700">--</span>
-                        <span class="text-gray-300">|</span>
-                        <span id="metaRating" class="text-gray-600">--</span>
-                        <span class="text-gray-300">|</span>
-                        <span id="metaPrize" class="text-gray-600">--</span>
-                    </div>
+                <div class="flex flex-col gap-1.5 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 text-xs shadow-sm">
                     
-                    <!-- 醒目賽事狀態 Banner -->
-                    <div id="currentRaceStatusBanner" class="text-xs font-bold px-3 py-1 bg-gray-200 text-gray-800 rounded-md shadow-sm">
-                        狀態: 載入中...
+                    <!-- 💡 獨立常駐顯示賽事日期與星期 (海外/本地賽事皆會完美顯示) -->
+                    <div class="flex items-center pb-1.5 border-b border-gray-200">
+                        <span id="globalMeetingDate" class="text-blue-900 font-extrabold text-sm">--</span>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <!-- 詳細賽事資訊 (僅限本地賽事 ST/HV 顯示) -->
+                        <div id="scrapedRaceMeta" class="hidden flex items-center flex-wrap gap-x-2 gap-y-1">
+                            <span id="metaRaceName" class="text-blue-950 font-bold text-sm">--</span>
+                            <span class="text-gray-300">|</span>
+                            <span id="metaPostTime" class="text-emerald-700 font-bold">開跑: --:--</span>
+                            <span class="text-gray-300">|</span>
+                            <span id="metaDistance" class="text-gray-700">--</span>
+                            <span class="text-gray-300">|</span>
+                            <span id="metaClass" class="text-amber-700 font-medium">--</span>
+                            <span class="text-gray-300">|</span>
+                            <span id="metaTrack" class="text-purple-700">--</span>
+                            <span class="text-gray-300">|</span>
+                            <span id="metaRating" class="text-gray-600">--</span>
+                            <span class="text-gray-300">|</span>
+                            <span id="metaPrize" class="text-gray-600">--</span>
+                        </div>
+                        
+                        <!-- 醒目賽事狀態 Banner -->
+                        <div id="currentRaceStatusBanner" class="text-xs font-bold px-3 py-1 bg-gray-200 text-gray-800 rounded-md shadow-sm">
+                            狀態: 載入中...
+                        </div>
                     </div>
                 </div>
 
@@ -181,14 +185,30 @@
         let selectedRaceIndex = 0;
         let globalRacesData = [];
         let autoRefreshTimer = null;
-        let openedRacesCache = {}; // 💡 補回這行全域變數宣告
-
+        let openedRacesCache = {}; // 💡 曾開售場次快取 (防假未接受投注)
 
         window.addEventListener('DOMContentLoaded', () => {
             loadMeetingsConfig();
             renderDefaultGearConfig();
             startAutoRefresh(15);
         });
+
+        // 💡 格式化日期格式 (例如："2026-11-08" -> "2026年11月8日 (星期日)")
+        function formatMeetingDateStr(dateStr) {
+            if (!dateStr) return '--';
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+
+            const year = parts[0];
+            const month = parseInt(parts[1], 10);
+            const day = parseInt(parts[2], 10);
+            
+            const d = new Date(dateStr);
+            const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+            const weekday = weekdays[d.getDay()];
+
+            return `${year}年${month}月${day}日 (${weekday})`;
+        }
 
         // 💡 統一的重置捲軸至頂端函數
         function scrollToTop() {
@@ -273,7 +293,7 @@
                         currentVenueCode = m.venue;
                         selectedRaceIndex = 0;
                         renderMeetingBadges();
-                        scrollToTop(); // 💡 切換賽事（田/谷/S1）時強制視窗回到最頂
+                        scrollToTop();
                         fetchFullData();
                         startAutoRefresh(15);
                     }
@@ -285,6 +305,9 @@
         async function fetchFullData() {
             const statusIndicator = document.getElementById('connectionStatus');
             const oddsUrl = `${BACKEND_URL}/api/odds?date=${currentMeetingDate}&venue=${currentVenueCode}`;
+
+            // 💡 每次載入或切換賽日時，立即更新全域日期顯示
+            document.getElementById('globalMeetingDate').textContent = formatMeetingDateStr(currentMeetingDate);
 
             try {
                 const res = await fetch(oddsUrl);
@@ -380,7 +403,7 @@
                     }
                 });
 
-                                const runners = globalRacesData[selectedRaceIndex].runners;
+                const runners = globalRacesData[selectedRaceIndex].runners;
                 let gotValidOdds = false;
                 
                 runners.forEach(r => {
@@ -395,7 +418,7 @@
                     }
                 });
 
-                // 💡 如果這場馬有有效賠率，直接記入 Cache，確保不再誤判為未開售
+                // 💡 如果這場馬有有效賠率，直接記入 Cache
                 if (gotValidOdds) {
                     const cacheKey = `${currentMeetingDate}_${currentVenueCode}_${globalRacesData[selectedRaceIndex].raceNo}`;
                     openedRacesCache[cacheKey] = true;
@@ -450,7 +473,7 @@
                     selectedRaceIndex = idx;
                     renderRaceTabs();
                     renderRaceViews();
-                    scrollToTop(); // 💡 切換場次（1, 2, 3...）時自動將捲軸歸零至最頂
+                    scrollToTop();
                     fetchCurrentRaceOdds();
                     fetchScrapedRaceMeta();
                 };
@@ -466,8 +489,7 @@
             renderDesktopTable();
         }
 
-
-                function renderRaceStatusBanner() {
+        function renderRaceStatusBanner() {
             const banner = document.getElementById('currentRaceStatusBanner');
             if (globalRacesData.length === 0 || !globalRacesData[selectedRaceIndex]) {
                 banner.textContent = '--';
@@ -480,8 +502,6 @@
             
             const cacheKey = `${currentMeetingDate}_${currentVenueCode}_${race.raceNo}`;
             const hasOdds = race.runners && race.runners.some(r => r.winOdds && r.winOdds !== '-' && r.winOdds !== 'SCR');
-            
-            // 💡 雙重保險：只要當前有賠率 OR 歷史曾經被記錄過已經開售，就判定為「接受投注」
             const isSelling = hasOdds || openedRacesCache[cacheKey];
 
             let statusText = "";
@@ -500,7 +520,6 @@
                     statusText = "已派彩";
                 }
             } else if (isSelling) {
-                // 藍色：接受投注 (包括曾經開售過的場次，防止輪詢時變紅色)
                 colorClass = "bg-blue-600 text-white font-bold shadow-sm";
                 statusText = "接受投注";
             } else {
@@ -508,14 +527,12 @@
                     case "SCHEDULED":
                     case "UPCOMING":
                     case "DECLARED":
-                        // 紅色：尚未接受投注
                         colorClass = "bg-red-600 text-white font-bold shadow-sm";
                         statusText = "尚未接受投注";
                         break;
                     case "CLOSED":
                     case "SUSPENDED":
                     case "LOCKED":
-                        // 橙色：截止投注
                         colorClass = "bg-amber-600 text-white font-bold shadow-sm";
                         statusText = "截止投注";
                         break;
@@ -534,8 +551,6 @@
             banner.textContent = statusText;
             banner.className = `text-xs px-3 py-1 rounded-md transition-all duration-200 ${colorClass}`;
         }
-
-
 
         // 1. 渲染手機版專屬雙行卡片
         function renderMobileList() {
@@ -571,7 +586,6 @@
                     const winClass = getBadgeClass(r.winStyle);
                     const plaClass = getBadgeClass(r.plaStyle);
                     itemDiv.innerHTML = `
-                        <!-- 第一行：馬號、馬名、放大賠率 -->
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-2.5 overflow-hidden pr-2">
                                 <span class="font-bold text-gray-900 bg-slate-100 rounded px-2 py-0.5 text-xs text-center flex-shrink-0">${r.horseNo}</span>
@@ -591,7 +605,6 @@
                                 </div>
                             </div>
                         </div>
-                        <!-- 第二行：檔位、負磅、騎師首字、練馬師首字、近績 -->
                         <div class="mt-2 flex items-center space-x-3 text-xs text-gray-600 pl-8 overflow-x-auto no-scrollbar">
                             <span>檔: <strong class="text-gray-900">${r.draw}</strong></span>
                             <span>負: <strong class="text-gray-900">${r.weight}</strong></span>
@@ -663,25 +676,6 @@
             if (style === 'green') return 'odds-green';
             return 'odds-normal';
         }
-
-        // 💡 格式化日期格式 (例如："2026-11-08" -> "2026年11月8日 (星期日)")
-function formatMeetingDateStr(dateStr) {
-    if (!dateStr) return '--';
-    const parts = dateStr.split('-');
-    if (parts.length !== 3) return dateStr;
-
-    const year = parts[0];
-    const month = parseInt(parts[1], 10);
-    const day = parseInt(parts[2], 10);
-    
-    // 計算星期幾
-    const d = new Date(dateStr);
-    const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-    const weekday = weekdays[d.getDay()];
-
-    return `${year}年${month}月${day}日 (${weekday})`;
-}
-
     </script>
 </body>
 </html>
