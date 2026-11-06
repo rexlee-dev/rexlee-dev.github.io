@@ -177,6 +177,8 @@
         let selectedRaceIndex = 0;
         let globalRacesData = [];
         let autoRefreshTimer = null;
+        let openedRacesCache = {}; // 💡 補回這行全域變數宣告
+
 
         window.addEventListener('DOMContentLoaded', () => {
             loadMeetingsConfig();
