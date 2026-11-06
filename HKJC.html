@@ -448,7 +448,7 @@
             renderDesktopTable();
         }
 
-        // 依據 status 精準渲染狀態文字與醒目顏色
+                // 依據 status 及有沒有賠率來精準渲染狀態文字與醒目顏色
         function renderRaceStatusBanner() {
             const banner = document.getElementById('currentRaceStatusBanner');
             if (globalRacesData.length === 0 || !globalRacesData[selectedRaceIndex]) {
@@ -459,6 +459,10 @@
 
             const race = globalRacesData[selectedRaceIndex];
             const rawStatus = race.status ? race.status.toUpperCase() : "SCHEDULED";
+            
+            // 💡 核心判斷：如果排位 API 狀態是 DECLARED 或 SCHEDULED，但馬匹已經有抓到賠率，就代表已經「接受投注」
+            const hasOdds = race.runners && race.runners.some(r => r.winOdds && r.winOdds !== '-' && r.winOdds !== 'SCR');
+            
             let statusText = "";
             let colorClass = "bg-gray-100 text-gray-800";
 
@@ -474,13 +478,15 @@
                 } else {
                     statusText = "已派彩";
                 }
-            } else if (rawStatus === "DECLARED") {
-                colorClass = "bg-red-600 text-white font-extrabold shadow-sm";
-                statusText = "尚未接受投注";
+            } else if (hasOdds) {
+                // 有賠率即強制顯示「接受投注」
+                colorClass = "bg-blue-600 text-white font-bold";
+                statusText = "接受投注";
             } else {
                 switch (rawStatus) {
                     case "SCHEDULED":
                     case "UPCOMING":
+                    case "DECLARED":
                         colorClass = "bg-gray-200 text-gray-800";
                         statusText = "尚未接受投注";
                         break;
@@ -511,6 +517,7 @@
             banner.textContent = statusText;
             banner.className = `text-xs px-3 py-1 rounded-md transition-all duration-200 ${colorClass}`;
         }
+
 
         // 1. 渲染手機版專屬雙行卡片
         function renderMobileList() {
