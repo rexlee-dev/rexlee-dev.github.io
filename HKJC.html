@@ -85,14 +85,18 @@
                     <div id="raceTabsContainer" class="flex items-center space-x-2 flex-shrink-0"></div>
                 </div>
 
-                <!-- 第二行：賽事詳細資訊與狀態 Banner (分離式設計) -->
-                <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 text-xs shadow-sm">
-                    <!-- 詳細賽事資訊 (僅限本地賽事 ST/HV 顯示) -->
-                    <div id="scrapedRaceMeta" class="hidden flex items-center flex-wrap gap-x-2 gap-y-1">
-                        <span id="metaRaceName" class="text-blue-950 font-bold text-sm">--</span>
-                        <span class="text-gray-300">|</span>
-                        <span id="metaPostTime" class="text-emerald-700 font-bold">開跑: --:--</span>
-                        <span class="text-gray-300">|</span>
+                <!-- 第二行：賽事詳細資訊與狀態 Banner -->
+<div class="flex flex-wrap items-center justify-between gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 text-xs shadow-sm">
+    <!-- 詳細賽事資訊 -->
+    <div id="scrapedRaceMeta" class="hidden flex items-center flex-wrap gap-x-2 gap-y-1">
+        <!-- 💡 新增：賽事日期與星期 -->
+        <span id="metaMeetingDate" class="text-blue-900 font-extrabold text-sm">--</span>
+        <span class="text-gray-300">|</span>
+        <span id="metaRaceName" class="text-blue-950 font-bold text-sm">--</span>
+        <span class="text-gray-300">|</span>
+        <span id="metaPostTime" class="text-emerald-700 font-bold">開跑: --:--</span>
+        <!-- ... 其餘保持不變 ... -->
+        <span class="text-gray-300">|</span>
                         <span id="metaDistance" class="text-gray-700">--</span>
                         <span class="text-gray-300">|</span>
                         <span id="metaClass" class="text-amber-700 font-medium">--</span>
@@ -659,6 +663,25 @@
             if (style === 'green') return 'odds-green';
             return 'odds-normal';
         }
+
+        // 💡 格式化日期格式 (例如："2026-11-08" -> "2026年11月8日 (星期日)")
+function formatMeetingDateStr(dateStr) {
+    if (!dateStr) return '--';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+
+    const year = parts[0];
+    const month = parseInt(parts[1], 10);
+    const day = parseInt(parts[2], 10);
+    
+    // 計算星期幾
+    const d = new Date(dateStr);
+    const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+    const weekday = weekdays[d.getDay()];
+
+    return `${year}年${month}月${day}日 (${weekday})`;
+}
+
     </script>
 </body>
 </html>
