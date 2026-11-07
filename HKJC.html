@@ -502,7 +502,10 @@
             
             const cacheKey = `${currentMeetingDate}_${currentVenueCode}_${race.raceNo}`;
             const hasOdds = race.runners && race.runners.some(r => r.winOdds && r.winOdds !== '-' && r.winOdds !== 'SCR');
-            const isSelling = hasOdds || openedRacesCache[cacheKey];
+            
+            // 💡 修正 1：如果官方狀態已經是 截止投注 或 已派彩等，就不再強制判斷為接受投注
+            const isClosedStatus = ["CLOSED", "SUSPENDED", "LOCKED", "RESULT", "COMPLETED", "OFF"].includes(rawStatus);
+            const isSelling = !isClosedStatus && (hasOdds || openedRacesCache[cacheKey]);
 
             let statusText = "";
             let colorClass = "bg-gray-100 text-gray-800";
@@ -533,6 +536,7 @@
                     case "CLOSED":
                     case "SUSPENDED":
                     case "LOCKED":
+                        // 💡 修正 2：明確對應截止投注的橙色
                         colorClass = "bg-amber-600 text-white font-bold shadow-sm";
                         statusText = "截止投注";
                         break;
