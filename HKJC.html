@@ -224,7 +224,9 @@
             const actualInterval = isLocalMeeting ? intervalSeconds : 25;
 
             autoRefreshTimer = setInterval(() => {
-                fetchCurrentRaceOdds();
+                // 💡 修正：由原本只刷賠率（fetchCurrentRaceOdds），改為完整重刷（fetchFullData），
+                // 這樣每次自動 refresh 時，官方的 status、sellStatus 以及賠率都會同步更新！
+                fetchFullData();
             }, actualInterval * 1000);
         }
 
