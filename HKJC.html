@@ -88,7 +88,7 @@
                 <!-- 第二行：賽事詳細資訊與狀態 Banner -->
                 <div class="flex flex-col gap-1.5 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 text-xs shadow-sm">
                     
-                    <!-- 💡 獨立常駐顯示賽事日期與星期 (海外/本地賽事皆會完美顯示) -->
+                    <!-- 💡 獨立常駐顯示賽事日期與星期 -->
                     <div class="flex items-center pb-1.5 border-b border-gray-200">
                         <span id="globalMeetingDate" class="text-blue-900 font-extrabold text-sm">--</span>
                     </div>
@@ -135,7 +135,7 @@
         </div>
 
         <!-- ========================================== -->
-        <!-- 2. 電腦專用：標準 Table 檢視 (維持 11 欄不變) -->
+        <!-- 2. 電腦專用：標準 Table 檢視 (維繫 11 欄不變) -->
         <!-- ========================================== -->
         <div class="hidden md:block overflow-x-auto border border-gray-200 rounded-lg shadow-sm bg-white">
             <table class="w-full text-left border-collapse text-sm">
@@ -185,7 +185,7 @@
         let selectedRaceIndex = 0;
         let globalRacesData = [];
         let autoRefreshTimer = null;
-        let openedRacesCache = {}; // 💡 曾開售場次快取 (防假未接受投注)
+        let openedRacesCache = {}; 
 
         window.addEventListener('DOMContentLoaded', () => {
             loadMeetingsConfig();
@@ -193,7 +193,6 @@
             startAutoRefresh(15);
         });
 
-        // 💡 格式化日期格式 (例如："2026-11-08" -> "2026年11月8日 (星期日)")
         function formatMeetingDateStr(dateStr) {
             if (!dateStr) return '--';
             const parts = dateStr.split('-');
@@ -210,7 +209,6 @@
             return `${year}年${month}月${day}日 (${weekday})`;
         }
 
-        // 💡 統一的重置捲軸至頂端函數
         function scrollToTop() {
             window.scrollTo({ top: 0, behavior: 'instant' });
             document.documentElement.scrollTop = 0;
@@ -306,7 +304,6 @@
             const statusIndicator = document.getElementById('connectionStatus');
             const oddsUrl = `${BACKEND_URL}/api/odds?date=${currentMeetingDate}&venue=${currentVenueCode}`;
 
-            // 💡 每次載入或切換賽日時，立即更新全域日期顯示
             document.getElementById('globalMeetingDate').textContent = formatMeetingDateStr(currentMeetingDate);
 
             try {
@@ -320,8 +317,6 @@
                     renderRaceTabs();
                     renderRaceViews();
                     fetchCurrentRaceOdds();
-
-                    // 同步獲取當前選中場次的網頁爬蟲詳細資料 (僅限本地賽事 ST/HV)
                     fetchScrapedRaceMeta();
 
                     const now = new Date();
@@ -335,7 +330,6 @@
             }
         }
 
-        // 呼叫後端 /api/scrape-race 取得本地詳細賽事資料
         async function fetchScrapedRaceMeta() {
             const metaContainer = document.getElementById('scrapedRaceMeta');
             const isLocal = (currentVenueCode === 'ST' || currentVenueCode === 'HV');
@@ -361,7 +355,6 @@
                     
                     document.getElementById('metaDistance').textContent = d.distance || '-';
                     document.getElementById('metaClass').textContent = d.raceClass || '-';
-                    
                     document.getElementById('metaTrack').textContent = d.track || '-';
                     document.getElementById('metaRating').textContent = d.rating || '-';
                     document.getElementById('metaPrize').textContent = d.prize || '-';
@@ -418,7 +411,6 @@
                     }
                 });
 
-                // 💡 如果這場馬有有效賠率，直接記入 Cache
                 if (gotValidOdds) {
                     const cacheKey = `${currentMeetingDate}_${currentVenueCode}_${globalRacesData[selectedRaceIndex].raceNo}`;
                     openedRacesCache[cacheKey] = true;
@@ -499,12 +491,13 @@
 
             const race = globalRacesData[selectedRaceIndex];
             const rawStatus = race.status ? race.status.toUpperCase() : "SCHEDULED";
+            const rawSellStatus = race.sellStatus ? race.sellStatus.toUpperCase() : "";
             
             const cacheKey = `${currentMeetingDate}_${currentVenueCode}_${race.raceNo}`;
             const hasOdds = race.runners && race.runners.some(r => r.winOdds && r.winOdds !== '-' && r.winOdds !== 'SCR');
             
-            // 💡 修正 1：如果官方狀態已經是 截止投注 或 已派彩等，就不再強制判斷為接受投注
-            const isClosedStatus = ["CLOSED", "SUSPENDED", "LOCKED", "RESULT", "COMPLETED", "OFF"].includes(rawStatus);
+            // 💡 關鍵修正：加入 sellStatus === "STOP_SELL"，防止帶賠率時把封盤狀態覆蓋為接受投注
+            const isClosedStatus = ["CLOSED", "SUSPENDED", "LOCKED", "RESULT", "COMPLETED", "OFF"].includes(rawStatus) || rawSellStatus === "STOP_SELL";
             const isSelling = !isClosedStatus && (hasOdds || openedRacesCache[cacheKey]);
 
             let statusText = "";
@@ -530,13 +523,17 @@
                     case "SCHEDULED":
                     case "UPCOMING":
                     case "DECLARED":
-                        colorClass = "bg-red-600 text-white font-bold shadow-sm";
-                        statusText = "尚未接受投注";
+                        if (rawSellStatus === "STOP_SELL") {
+                            colorClass = "bg-amber-600 text-white font-bold shadow-sm";
+                            statusText = "截止投注";
+                        } else {
+                            colorClass = "bg-red-600 text-white font-bold shadow-sm";
+                            statusText = "尚未接受投注";
+                        }
                         break;
                     case "CLOSED":
                     case "SUSPENDED":
                     case "LOCKED":
-                        // 💡 修正 2：明確對應截止投注的橙色
                         colorClass = "bg-amber-600 text-white font-bold shadow-sm";
                         statusText = "截止投注";
                         break;
@@ -546,8 +543,13 @@
                         statusText = "賽事完成 (等待派彩)";
                         break;
                     default:
-                        colorClass = "bg-gray-100 text-gray-800";
-                        statusText = race.status;
+                        if (rawSellStatus === "STOP_SELL") {
+                            colorClass = "bg-amber-600 text-white font-bold shadow-sm";
+                            statusText = "截止投注";
+                        } else {
+                            colorClass = "bg-gray-100 text-gray-800";
+                            statusText = race.status;
+                        }
                         break;
                 }
             }
@@ -556,7 +558,6 @@
             banner.className = `text-xs px-3 py-1 rounded-md transition-all duration-200 ${colorClass}`;
         }
 
-        // 1. 渲染手機版專屬雙行卡片
         function renderMobileList() {
             const container = document.getElementById('mobileRunnersContainer');
             container.innerHTML = '';
@@ -622,7 +623,6 @@
             });
         }
 
-        // 2. 渲染電腦版標準 Table
         function renderDesktopTable() {
             const tbody = document.getElementById('desktopRunnersTableBody');
             tbody.innerHTML = '';
