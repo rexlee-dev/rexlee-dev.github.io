@@ -60,42 +60,52 @@
 
     <!-- 頂部導航列 -->
     <header class="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
-        <div class="max-w-7xl mx-auto px-3 py-2.5 flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <div class="w-2.5 h-2.5 rounded-full bg-blue-900"></div>
-                <h1 class="text-sm md:text-base font-bold tracking-tight text-gray-900">HKJC 賽馬排位與即時賠率監控</h1>
-                <span id="connectionStatus" class="inline-block w-2 h-2 rounded-full bg-yellow-500" title="連線中..."></span>
+        <div class="max-w-7xl mx-auto px-3 py-2 flex justify-between items-center gap-2">
+            <div class="flex items-center space-x-2 min-w-0">
+                <div class="w-2.5 h-2.5 rounded-full bg-blue-900 flex-shrink-0"></div>
+                <h1 class="text-sm md:text-base font-bold tracking-tight text-gray-900 truncate">HKJC 賽馬排位與即時賠率監控</h1>
+                <span id="connectionStatus" class="inline-block w-2 h-2 rounded-full bg-yellow-500 flex-shrink-0" title="連線中..."></span>
             </div>
 
-            <div class="flex items-center space-x-2 text-xs text-gray-500">
-                <span id="lastUpdateTime">最後更新: --:--:--</span>
+            <div class="flex items-center space-x-2 text-xs text-gray-500 flex-shrink-0">
+                <span id="lastUpdateTime" class="hidden sm:inline">最後更新: --:--:--</span>
+                <!-- 同一頁模式切換：賠率 / 筆記 -->
+                <div class="inline-flex rounded-md bg-slate-100 p-0.5 border border-slate-200">
+                    <button id="tabOddsMode" onclick="setPageMode('odds')" class="px-2.5 py-1 rounded text-xs font-bold bg-blue-950 text-white transition">
+                        賠率
+                    </button>
+                    <button id="tabNotesMode" onclick="setPageMode('notes')" class="px-2.5 py-1 rounded text-xs font-bold text-slate-700 hover:text-blue-950 transition">
+                        筆記
+                    </button>
+                </div>
                 <button onclick="fetchFullData()" class="bg-blue-950 text-white px-2.5 py-1 rounded text-xs font-medium hover:bg-blue-900 transition shadow-sm">
-                    即時重刷
+                    重刷
                 </button>
             </div>
         </div>
 
-        <!-- 賽事切換工具列與醒目狀態標籤 -->
-        <div class="bg-white border-t border-gray-200">
-            <div class="max-w-7xl mx-auto px-3 py-2 flex flex-col gap-2">
+        <!-- 💡 賽事切換工具列與醒目狀態標籤（僅在「賠率」頁顯示，切換去「筆記」頁時隱藏） -->
+        <div id="topRaceInfoBar" class="bg-white border-t border-gray-200">
+            <div class="max-w-7xl mx-auto px-3 py-1.5 flex flex-col gap-1.5">
                 
-                <!-- 第一行：場地/日選單 + 場次按鈕 (全部靠左對齊，可左右捲動) -->
-                <div class="flex items-center justify-start overflow-x-auto no-scrollbar py-1 space-x-3">
+                <!-- 第一行：場地/日選單 + 場次按鈕 -->
+                <div class="flex items-center justify-start overflow-x-auto no-scrollbar py-0.5 space-x-3">
                     <div id="meetingsContainer" class="flex items-center space-x-2 pr-3 border-r border-gray-200 flex-shrink-0"></div>
                     <div id="raceTabsContainer" class="flex items-center space-x-2 flex-shrink-0"></div>
                 </div>
 
                 <!-- 第二行：賽事詳細資訊與狀態 Banner -->
-                <div class="flex flex-col gap-1.5 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 text-xs shadow-sm">
+                <div class="flex flex-col gap-1 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
                     
                     <!-- 💡 獨立常駐顯示賽事日期與星期 -->
-                    <div class="flex items-center pb-1.5 border-b border-gray-200">
+                    <div class="flex items-center justify-between pb-1 border-b border-gray-200">
                         <span id="globalMeetingDate" class="text-blue-900 font-extrabold text-sm">--</span>
+                        <span id="activeRaceIndicator" class="text-xs font-bold text-slate-600">第 1 場</span>
                     </div>
 
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <!-- 詳細賽事資訊 (僅限本地賽事 ST/HV 顯示) -->
-                        <div id="scrapedRaceMeta" class="hidden flex items-center flex-wrap gap-x-2 gap-y-1">
+                        <div id="scrapedRaceMeta" class="hidden flex items-center flex-wrap gap-x-2 gap-y-0.5">
                             <span id="metaRaceName" class="text-blue-950 font-bold text-sm">--</span>
                             <span class="text-gray-300">|</span>
                             <span id="metaPostTime" class="text-emerald-700 font-bold">開跑: --:--</span>
@@ -112,7 +122,7 @@
                         </div>
                         
                         <!-- 醒目賽事狀態 Banner -->
-                        <div id="currentRaceStatusBanner" class="text-xs font-bold px-3 py-1 bg-gray-200 text-gray-800 rounded-md shadow-sm">
+                        <div id="currentRaceStatusBanner" class="text-xs font-bold px-2.5 py-0.5 bg-gray-200 text-gray-800 rounded-md">
                             狀態: 載入中...
                         </div>
                     </div>
@@ -123,75 +133,998 @@
     </header>
 
     <!-- 主要內容區 -->
-    <main class="max-w-7xl mx-auto px-2 md:px-4 py-4 flex-grow w-full">
+    <main class="max-w-7xl mx-auto px-2.5 sm:px-3 md:px-4 py-2.5 flex-grow w-full space-y-3">
         
         <!-- ========================================== -->
-        <!-- 1. 手機專用：雙行緊湊卡片 -->
+        <!-- A. 賠率排位檢視區 + 最底心水/唔信選擇器 -->
         <!-- ========================================== -->
-        <div class="block md:hidden border border-gray-200 rounded-lg shadow-sm bg-white overflow-hidden">
-            <div id="mobileRunnersContainer" class="divide-y divide-gray-100">
-                <div class="text-center py-8 text-gray-400 text-sm">請稍候，正在載入賽事數據...</div>
+        <div id="oddsSection" class="space-y-3">
+            <!-- 1. 手機專用：雙行緊湊卡片 -->
+            <div class="block md:hidden border border-gray-200 rounded-lg shadow-sm bg-white overflow-hidden">
+                <div id="mobileRunnersContainer" class="divide-y divide-gray-100">
+                    <div class="text-center py-8 text-gray-400 text-sm">請稍候，正在載入賽事數據...</div>
+                </div>
             </div>
+
+            <!-- 2. 電腦專用：標準 Table 檢視 (維繫 11 欄不變) -->
+            <div class="hidden md:block overflow-x-auto border border-gray-200 rounded-lg shadow-sm bg-white">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-gray-100 text-gray-700 text-xs uppercase tracking-wider border-b border-gray-200 whitespace-nowrap">
+                            <th class="py-2.5 px-3 text-center min-w-[50px]">馬號</th>
+                            <th class="py-2.5 px-3">馬名</th>
+                            <th class="py-2.5 px-3 text-center min-w-[50px]">檔位</th>
+                            <th class="py-2.5 px-3 text-center">負磅</th>
+                            <th class="py-2.5 px-3">騎師</th>
+                            <th class="py-2.5 px-3">練馬師</th>
+                            <th class="py-2.5 px-3 text-center">評分</th>
+                            <th class="py-2.5 px-3 text-center">近績</th>
+                            <th class="py-2.5 px-3 text-center">配備</th>
+                            <th class="py-2.5 px-3 text-right font-bold">獨贏</th>
+                            <th class="py-2.5 px-3 text-right font-bold">位置</th>
+                        </tr>
+                    </thead>
+                    <tbody id="desktopRunnersTableBody" class="divide-y divide-gray-200 bg-white whitespace-nowrap">
+                        <tr>
+                            <td colspan="11" class="text-center py-8 text-gray-400">請稍候，正在載入賽事數據...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 💡 賠率場次最底：揀選本場心水(1-4名) & 不可信任馬匹(最多2匹) -->
+            <section id="bottomPickPanel" class="border border-blue-200 rounded-lg p-3 bg-white shadow-sm space-y-2.5">
+                <div class="flex items-center justify-between gap-2 border-b border-gray-100 pb-1.5">
+                    <h2 id="bottomPickTitle" class="text-sm font-extrabold text-blue-950 truncate">揀馬筆記</h2>
+                    <button type="button" onclick="clearCurrentRaceNote()" class="px-2.5 py-1 rounded text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition flex-shrink-0 inline-flex items-center gap-1">
+                        <span>🗑</span><span>清空</span>
+                    </button>
+                </div>
+
+                <!-- 1 - 4 名下拉選單：手機版一行一個名次+選單，電腦版 4 欄橫排 -->
+                <div class="flex flex-col gap-2 md:grid md:grid-cols-4 md:gap-2">
+                    <div class="flex items-center gap-2 md:block">
+                        <label for="pickRank1" class="w-16 flex-shrink-0 md:w-auto block text-xs md:text-[11px] font-bold text-amber-700 md:mb-0.5">第一名</label>
+                        <select id="pickRank1" onchange="updateNoteField('rank1', this.value)" class="flex-1 min-w-0 w-full border border-gray-300 rounded-md px-2 py-1.5 text-xs sm:text-sm font-bold bg-white text-gray-900"></select>
+                    </div>
+                    <div class="flex items-center gap-2 md:block">
+                        <label for="pickRank2" class="w-16 flex-shrink-0 md:w-auto block text-xs md:text-[11px] font-bold text-slate-700 md:mb-0.5">第二名</label>
+                        <select id="pickRank2" onchange="updateNoteField('rank2', this.value)" class="flex-1 min-w-0 w-full border border-gray-300 rounded-md px-2 py-1.5 text-xs sm:text-sm font-bold bg-white text-gray-900"></select>
+                    </div>
+                    <div class="flex items-center gap-2 md:block">
+                        <label for="pickRank3" class="w-16 flex-shrink-0 md:w-auto block text-xs md:text-[11px] font-bold text-orange-700 md:mb-0.5">第三名</label>
+                        <select id="pickRank3" onchange="updateNoteField('rank3', this.value)" class="flex-1 min-w-0 w-full border border-gray-300 rounded-md px-2 py-1.5 text-xs sm:text-sm font-bold bg-white text-gray-900"></select>
+                    </div>
+                    <div class="flex items-center gap-2 md:block">
+                        <label for="pickRank4" class="w-16 flex-shrink-0 md:w-auto block text-xs md:text-[11px] font-bold text-blue-800 md:mb-0.5">第四名</label>
+                        <select id="pickRank4" onchange="updateNoteField('rank4', this.value)" class="flex-1 min-w-0 w-full border border-gray-300 rounded-md px-2 py-1.5 text-xs sm:text-sm font-bold bg-white text-gray-900"></select>
+                    </div>
+                </div>
+
+                <!-- 不可信任馬匹 (最多 2 匹) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div class="flex items-center gap-2 sm:block">
+                        <label for="pickUntrust1" class="w-20 flex-shrink-0 sm:w-auto block text-xs sm:text-[11px] font-bold text-red-700 sm:mb-0.5">不可信任 1</label>
+                        <select id="pickUntrust1" onchange="updateNoteField('untrust1', this.value)" class="flex-1 min-w-0 w-full border border-red-200 rounded-md px-2 py-1.5 text-xs sm:text-sm font-bold bg-red-50/40 text-red-950"></select>
+                    </div>
+                    <div class="flex items-center gap-2 sm:block">
+                        <label for="pickUntrust2" class="w-20 flex-shrink-0 sm:w-auto block text-xs sm:text-[11px] font-bold text-red-700 sm:mb-0.5">不可信任 2</label>
+                        <select id="pickUntrust2" onchange="updateNoteField('untrust2', this.value)" class="flex-1 min-w-0 w-full border border-red-200 rounded-md px-2 py-1.5 text-xs sm:text-sm font-bold bg-red-50/40 text-red-950"></select>
+                    </div>
+                </div>
+
+                <!-- 簡短備註獨立放下一行 -->
+                <div>
+                    <label for="pickRemark" class="block text-[11px] font-bold text-slate-700 mb-0.5">簡短備註</label>
+                    <input id="pickRemark" type="text" oninput="updateNoteField('remark', this.value)" placeholder="例如：排外檔、唔信大熱..." class="w-full border border-gray-300 rounded-md px-2.5 py-1.5 text-xs sm:text-sm bg-white text-gray-900">
+                </div>
+            </section>
         </div>
 
         <!-- ========================================== -->
-        <!-- 2. 電腦專用：標準 Table 檢視 (維繫 11 欄不變) -->
+        <!-- B. 筆記總覽頁：賽日切換 + 總括 Table + 每場對照 -->
         <!-- ========================================== -->
-        <div class="hidden md:block overflow-x-auto border border-gray-200 rounded-lg shadow-sm bg-white">
-            <table class="w-full text-left border-collapse text-sm">
-                <thead>
-                    <tr class="bg-gray-100 text-gray-700 text-xs uppercase tracking-wider border-b border-gray-200 whitespace-nowrap">
-                        <th class="py-2.5 px-3 text-center min-w-[50px]">馬號</th>
-                        <th class="py-2.5 px-3">馬名</th>
-                        <th class="py-2.5 px-3 text-center min-w-[50px]">檔位</th>
-                        <th class="py-2.5 px-3 text-center">負磅</th>
-                        <th class="py-2.5 px-3">騎師</th>
-                        <th class="py-2.5 px-3">練馬師</th>
-                        <th class="py-2.5 px-3 text-center">評分</th>
-                        <th class="py-2.5 px-3 text-center">近績</th>
-                        <th class="py-2.5 px-3 text-center">配備</th>
-                        <th class="py-2.5 px-3 text-right font-bold">獨贏</th>
-                        <th class="py-2.5 px-3 text-right font-bold">位置</th>
-                    </tr>
-                </thead>
-                <tbody id="desktopRunnersTableBody" class="divide-y divide-gray-200 bg-white whitespace-nowrap">
-                    <tr>
-                        <td colspan="11" class="text-center py-8 text-gray-400">請稍候，正在載入賽事數據...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+        <section id="notesSection" class="hidden space-y-2.5">
+            <!-- 1. 總括 Table 頂部列：參考賠率頁圓圈賽日切換 + 🗑 清空 + 獨立標題行 -->
+            <div class="bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm space-y-1.5">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                        <span class="text-xs font-bold text-slate-600 flex-shrink-0">賽日</span>
+                        <div id="notesMeetingsContainer" class="flex items-center space-x-2 overflow-x-auto no-scrollbar py-0.5"></div>
+                    </div>
+                    <button type="button" onclick="openClearAllDialog()" class="px-2.5 py-1 rounded text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition flex-shrink-0 inline-flex items-center gap-1">
+                        <span>🗑</span><span>清空</span>
+                    </button>
+                </div>
+                <div class="pt-1.5 border-t border-gray-100">
+                    <h2 id="notesOverviewTitle" class="text-xs sm:text-sm font-extrabold text-blue-950">全日筆記與賽果</h2>
+                </div>
+            </div>
 
-        <!-- 馬匹配備說明區塊 (Hardcode) -->
-        <div class="mt-6 border border-gray-200 rounded-lg p-3 md:p-4 bg-white shadow-sm">
-            <h3 class="text-xs font-bold uppercase text-gray-700 mb-2">常用馬匹配備代號說明 (Gear Reference)</h3>
-            <div id="gearConfigContainer" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 text-xs text-gray-600">
+            <!-- 2. 總括 Table（含第1至4名 + 不信任馬，完整保留馬號與馬名） -->
+            <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-x-auto">
+                <table class="w-full text-left border-collapse text-[11px] md:text-xs whitespace-nowrap">
+                    <thead>
+                        <tr class="bg-blue-950 text-white">
+                            <th class="py-1.5 px-2 md:px-2.5">場次</th>
+                            <th class="py-1.5 px-2 md:px-2.5">第 1 名</th>
+                            <th class="py-1.5 px-2 md:px-2.5">第 2 名</th>
+                            <th class="py-1.5 px-2 md:px-2.5">第 3 名</th>
+                            <th class="py-1.5 px-2 md:px-2.5">第 4 名</th>
+                            <th class="py-1.5 px-2 md:px-2.5">不信任馬</th>
+                        </tr>
+                    </thead>
+                    <tbody id="notesSummaryTableBody" class="divide-y divide-gray-100 bg-white"></tbody>
+                </table>
+            </div>
+
+            <!-- 3. 各場卡片控制列（ ▼ 全部展開 / ▲ 全部收合 放喺各場卡片上方，對應實際控制對象） -->
+            <div class="flex items-center justify-between px-1 pt-0.5">
+                <span class="text-xs font-bold text-slate-600">各場明細與賽果</span>
+                <div class="flex items-center gap-1.5">
+                    <button type="button" onclick="toggleAllNoteCards(true)" class="px-2 py-1 rounded text-xs font-bold bg-white border border-gray-200 text-slate-800 hover:bg-slate-100 transition inline-flex items-center gap-1 shadow-2xs">
+                        <span>▼</span><span>全部展開</span>
+                    </button>
+                    <button type="button" onclick="toggleAllNoteCards(false)" class="px-2 py-1 rounded text-xs font-bold bg-white border border-gray-200 text-slate-800 hover:bg-slate-100 transition inline-flex items-center gap-1 shadow-2xs">
+                        <span>▲</span><span>全部收合</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 4. 各場詳細筆記與賽果對照 -->
+            <div id="allRacesNotesOverviewContainer" class="space-y-2.5"></div>
+        </section>
+
+        <!-- 馬匹配備說明區塊（僅在「賠率」頁顯示，切換去「筆記」頁時隱藏） -->
+        <div id="gearReferenceSection" class="border border-gray-200 rounded-lg p-3 bg-white shadow-sm">
+            <h3 class="text-xs font-bold uppercase text-gray-700 mb-1.5">常用馬匹配備代號說明 (Gear Reference)</h3>
+            <div id="gearConfigContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 text-xs text-gray-600">
                 <!-- 由 renderDefaultGearConfig 直接渲染 -->
             </div>
         </div>
     </main>
 
+    <!-- 💡 Popup Dialog：確認清空全部心水及不信任馬 / 完成提示 -->
+    <div id="actionPopupDialog" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div class="bg-white border border-gray-200 rounded-xl shadow-xl max-w-xs w-full p-4 space-y-3">
+            <h3 id="popupTitle" class="text-sm font-extrabold text-blue-950">確認操作</h3>
+            <p id="popupMessage" class="text-xs text-gray-700 leading-relaxed"></p>
+            <div id="popupConfirmButtons" class="flex justify-end gap-2 pt-1">
+                <button type="button" onclick="closePopupDialog()" class="px-3 py-1.5 rounded-md text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+                    取消
+                </button>
+                <button type="button" onclick="confirmClearAllSelectedPicks()" class="px-3 py-1.5 rounded-md text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition">
+                    確認清空
+                </button>
+            </div>
+            <div id="popupDoneButtons" class="hidden flex justify-end pt-1">
+                <button type="button" onclick="closePopupDialog()" class="px-3.5 py-1.5 rounded-md text-xs font-bold bg-blue-950 text-white hover:bg-blue-900 transition">
+                    確定
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- 頁尾 -->
-    <footer class="bg-white border-t border-gray-200 text-center py-3 text-xs text-gray-400 mt-8">
+    <footer class="bg-white border-t border-gray-200 text-center py-2.5 text-xs text-gray-400 mt-4">
         HKJC Real-Time Odds & Racecard Monitor &bull; Mobile Optimized Edition
     </footer>
 
     <script>
         const BACKEND_URL = 'https://hkjc-backend.troulungble.workers.dev';
+        const NOTES_STORAGE_KEY = 'hkjc_race_notes_v2';
 
         let currentMeetingDate = '2026-11-08';
         let currentVenueCode = 'ST';
         let meetingsList = [];
         let selectedRaceIndex = 0;
+        let pageMode = 'odds'; // 'odds' | 'notes'
         let globalRacesData = [];
         let autoRefreshTimer = null;
-        let openedRacesCache = {}; 
+        let openedRacesCache = {};
+        let allRaceNotes = loadAllNotes();
+        let expandedRaceNos = {}; // { [raceNo]: boolean }
+
+        // 💡 手機左右掃切換場次變數
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartTarget = null;
 
         window.addEventListener('DOMContentLoaded', () => {
+            populateHorseDropdowns(null);
+            renderNotesMeetingBadges();
             loadMeetingsConfig();
             renderDefaultGearConfig();
             startAutoRefresh(15);
         });
+
+        function normalizeNo(val) {
+            return String(val || '').replace(/^0+/, '').trim();
+        }
+
+        function escapeHtml(str) {
+            return String(str || '').replace(/[&<>"']/g, m => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[m]));
+        }
+
+        function getVenueLabel(venue) {
+            if (venue === 'ST') return '沙田 (ST)';
+            if (venue === 'HV') return '跑馬地 (HV)';
+            return venue || '';
+        }
+
+        function getMeetingBadgeText(venue) {
+            if (venue === 'ST') return '田';
+            if (venue === 'HV') return '谷';
+            return venue || '';
+        }
+
+        // 💡 合併 meetingsList 與 localStorage 曾經有筆記嘅賽日，渲染筆記頁圓圈賽日徽章
+        function getCombinedMeetingsList() {
+            const map = new Map();
+            (meetingsList || []).forEach(m => {
+                if (!m || !m.date || !m.venue) return;
+                const key = `${m.date}|${m.venue}`;
+                map.set(key, {
+                    date: m.date,
+                    venue: m.venue,
+                    name: m.name || `${m.date} ${getVenueLabel(m.venue)}`
+                });
+            });
+
+            Object.keys(allRaceNotes || {}).forEach(noteKey => {
+                const match = noteKey.match(/^(\d{4}-\d{2}-\d{2})_([A-Z0-9]+)_R\d+$/i);
+                if (!match) return;
+                const date = match[1];
+                const venue = match[2].toUpperCase();
+                const key = `${date}|${venue}`;
+                if (!map.has(key)) {
+                    map.set(key, {
+                        date,
+                        venue,
+                        name: `${date} ${getVenueLabel(venue)}`
+                    });
+                }
+            });
+
+            const currentKey = `${currentMeetingDate}|${currentVenueCode}`;
+            if (currentMeetingDate && currentVenueCode && !map.has(currentKey)) {
+                map.set(currentKey, {
+                    date: currentMeetingDate,
+                    venue: currentVenueCode,
+                    name: `${currentMeetingDate} ${getVenueLabel(currentVenueCode)}`
+                });
+            }
+
+            return Array.from(map.values()).sort((a, b) => {
+                if (a.date !== b.date) return b.date.localeCompare(a.date);
+                return a.venue.localeCompare(b.venue);
+            });
+        }
+
+        function renderNotesMeetingBadges() {
+            const container = document.getElementById('notesMeetingsContainer');
+            if (!container) return;
+
+            container.innerHTML = '';
+            const combined = getCombinedMeetingsList();
+
+            combined.forEach(m => {
+                const isSelected = (m.date === currentMeetingDate && m.venue === currentVenueCode);
+                const badge = document.createElement('div');
+                badge.className = `circle-badge ${isSelected ? 'circle-badge-active' : 'circle-badge-inactive'}`;
+                badge.textContent = getMeetingBadgeText(m.venue);
+                badge.title = `${m.date} (${m.venue})`;
+
+                badge.onclick = () => {
+                    if (currentMeetingDate !== m.date || currentVenueCode !== m.venue) {
+                        currentMeetingDate = m.date;
+                        currentVenueCode = m.venue;
+                        selectedRaceIndex = 0;
+                        expandedRaceNos = {};
+                        globalRacesData = [];
+
+                        renderMeetingBadges();
+                        renderNotesMeetingBadges();
+                        renderNotesOverview();
+                        scrollToTop();
+                        fetchFullData();
+                        startAutoRefresh(15);
+                    }
+                };
+                container.appendChild(badge);
+            });
+        }
+
+        // 💡 判斷是否後備馬（兼容 reserve / S1 / 後備 / 無馬號後備馬）
+        function isReserveHorse(runner) {
+            if (!runner) return false;
+            if (runner.isReserve === true || runner.reserve === true) return true;
+            const statusStr = String(runner.status || runner.runnerStatus || runner.type || '').toUpperCase();
+            if (statusStr.includes('RES') || statusStr.includes('STBY') || statusStr.includes('後備')) return true;
+            const noStr = String(runner.horseNo || '').trim().toUpperCase();
+            if (noStr.startsWith('S') || noStr.startsWith('R') || noStr.includes('後備')) return true;
+            const hName = String(runner.horseName || '').trim();
+            if (!noStr && hName) return true;
+            return false;
+        }
+
+        // 💡 格式化馬匹顯示標籤：後備馬顯示「後備 - 馬名」；一般馬顯示「馬號 馬名」
+        function formatHorseLabel(noOrKey, runnerInfo) {
+            const rawNo = runnerInfo?.horseNo ?? noOrKey ?? '';
+            const hName = runnerInfo?.horseName ? String(runnerInfo.horseName).trim() : '';
+            const strNo = String(rawNo).trim();
+            const reserve = isReserveHorse(runnerInfo)
+                || strNo.toUpperCase().startsWith('S')
+                || strNo.toUpperCase().startsWith('R')
+                || strNo.includes('後備')
+                || (!normalizeNo(strNo) && Boolean(hName));
+
+            if (reserve) {
+                return hName ? `後備 - ${hName}` : '後備';
+            }
+            const cleanNum = normalizeNo(strNo) || strNo;
+            if (!cleanNum && !hName) return '-';
+            return hName ? `${cleanNum} 號 ${hName}` : `${cleanNum} 號`;
+        }
+
+        // 💡 同一頁模式切換（筆記頁隱藏頁面上方賽事資料區及常用馬匹配備代號說明）
+        function setPageMode(mode) {
+            pageMode = mode;
+            const oddsSection = document.getElementById('oddsSection');
+            const notesSection = document.getElementById('notesSection');
+            const topRaceInfoBar = document.getElementById('topRaceInfoBar');
+            const gearReferenceSection = document.getElementById('gearReferenceSection');
+            const tabOdds = document.getElementById('tabOddsMode');
+            const tabNotes = document.getElementById('tabNotesMode');
+
+            if (mode === 'notes') {
+                if (topRaceInfoBar) topRaceInfoBar.classList.add('hidden');
+                if (gearReferenceSection) gearReferenceSection.classList.add('hidden');
+                oddsSection.classList.add('hidden');
+                notesSection.classList.remove('hidden');
+                tabNotes.className = 'px-2.5 py-1 rounded text-xs font-bold bg-blue-950 text-white transition';
+                tabOdds.className = 'px-2.5 py-1 rounded text-xs font-bold text-slate-700 hover:text-blue-950 transition';
+                renderNotesMeetingBadges();
+                renderNotesOverview();
+            } else {
+                if (topRaceInfoBar) topRaceInfoBar.classList.remove('hidden');
+                if (gearReferenceSection) gearReferenceSection.classList.remove('hidden');
+                notesSection.classList.add('hidden');
+                oddsSection.classList.remove('hidden');
+                tabOdds.className = 'px-2.5 py-1 rounded text-xs font-bold bg-blue-950 text-white transition';
+                tabNotes.className = 'px-2.5 py-1 rounded text-xs font-bold text-slate-700 hover:text-blue-950 transition';
+                renderBottomPickPanel();
+            }
+            scrollToTop();
+        }
+
+        function loadAllNotes() {
+            try {
+                const raw = localStorage.getItem(NOTES_STORAGE_KEY);
+                return raw ? JSON.parse(raw) : {};
+            } catch (e) {
+                return {};
+            }
+        }
+
+        function saveAllNotes() {
+            try {
+                localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(allRaceNotes));
+            } catch (e) {
+                console.warn('儲存筆記失敗:', e);
+            }
+        }
+
+        function getActiveRaceNo() {
+            if (globalRacesData.length > 0 && globalRacesData[selectedRaceIndex]) {
+                return String(globalRacesData[selectedRaceIndex].raceNo);
+            }
+            return String(selectedRaceIndex + 1);
+        }
+
+        function getNoteKey(raceNo = getActiveRaceNo()) {
+            return `${currentMeetingDate}_${currentVenueCode}_R${normalizeNo(raceNo) || raceNo}`;
+        }
+
+        function ensureNoteRecord(raceNo = getActiveRaceNo()) {
+            const key = getNoteKey(raceNo);
+            if (!allRaceNotes[key]) {
+                allRaceNotes[key] = {
+                    raceNo: normalizeNo(raceNo) || String(raceNo),
+                    rank1: '',
+                    rank2: '',
+                    rank3: '',
+                    rank4: '',
+                    untrust1: '',
+                    untrust2: '',
+                    remark: '',
+                    resultSnapshot: null
+                };
+            }
+            return allRaceNotes[key];
+        }
+
+        // 💡 根據目前場次實際出賽馬匹動態產生下拉選單（後備馬顯示「後備 - 馬名」，唔顯示「號」）
+        function populateHorseDropdowns(raceObj) {
+            const selectIds = ['pickRank1', 'pickRank2', 'pickRank3', 'pickRank4', 'pickUntrust1', 'pickUntrust2'];
+            const runners = (raceObj && Array.isArray(raceObj.runners)) ? raceObj.runners : [];
+
+            let optionsHtml = '<option value="">-- 未揀 --</option>';
+            if (runners.length > 0) {
+                runners.forEach((r, idx) => {
+                    const numKey = normalizeNo(r.horseNo);
+                    const val = numKey || (r.horseName ? `RES_${idx}_${String(r.horseName).trim()}` : `RES_${idx}`);
+                    const label = formatHorseLabel(r.horseNo, r);
+                    optionsHtml += `<option value="${escapeHtml(val)}">${escapeHtml(label)}</option>`;
+                });
+            } else {
+                for (let h = 1; h <= 20; h++) {
+                    optionsHtml += `<option value="${h}">${h} 號</option>`;
+                }
+            }
+
+            selectIds.forEach(id => {
+                const sel = document.getElementById(id);
+                if (sel) sel.innerHTML = optionsHtml;
+            });
+        }
+
+        function renderBottomPickPanel() {
+            const raceObj = (globalRacesData.length > 0 && globalRacesData[selectedRaceIndex])
+                ? globalRacesData[selectedRaceIndex]
+                : null;
+            const raceNoDisplay = raceObj ? raceObj.raceNo : (selectedRaceIndex + 1);
+
+            const indicator = document.getElementById('activeRaceIndicator');
+            if (indicator) indicator.textContent = `第 ${raceNoDisplay} 場`;
+
+            const titleEl = document.getElementById('bottomPickTitle');
+            if (titleEl) titleEl.textContent = `第 ${raceNoDisplay} 場 揀馬筆記`;
+
+            populateHorseDropdowns(raceObj);
+
+            const note = ensureNoteRecord(raceNoDisplay);
+            document.getElementById('pickRank1').value = note.rank1 || '';
+            document.getElementById('pickRank2').value = note.rank2 || '';
+            document.getElementById('pickRank3').value = note.rank3 || '';
+            document.getElementById('pickRank4').value = note.rank4 || '';
+            document.getElementById('pickUntrust1').value = note.untrust1 || '';
+            document.getElementById('pickUntrust2').value = note.untrust2 || '';
+            document.getElementById('pickRemark').value = note.remark || '';
+        }
+
+        function updateNoteField(field, value) {
+            const note = ensureNoteRecord(getActiveRaceNo());
+            note[field] = value;
+            captureResultSnapshotForRace(globalRacesData[selectedRaceIndex]);
+            saveAllNotes();
+            renderNotesMeetingBadges();
+            if (pageMode === 'notes') renderNotesOverview();
+        }
+
+        function clearCurrentRaceNote() {
+            const key = getNoteKey(getActiveRaceNo());
+            delete allRaceNotes[key];
+            saveAllNotes();
+            renderBottomPickPanel();
+            renderNotesMeetingBadges();
+            if (pageMode === 'notes') renderNotesOverview();
+        }
+
+        // 💡 Popup Dialog 控制
+        function openClearAllDialog() {
+            document.getElementById('popupTitle').textContent = '清空全部選擇';
+            document.getElementById('popupMessage').textContent = `確定要清空 ${formatMeetingDateStr(currentMeetingDate)}（${currentVenueCode}）全部已選心水、不信任馬及備註嗎？`;
+            document.getElementById('popupConfirmButtons').classList.remove('hidden');
+            document.getElementById('popupDoneButtons').classList.add('hidden');
+            document.getElementById('actionPopupDialog').classList.remove('hidden');
+        }
+
+        function closePopupDialog() {
+            document.getElementById('actionPopupDialog').classList.add('hidden');
+        }
+
+        function confirmClearAllSelectedPicks() {
+            const prefix = `${currentMeetingDate}_${currentVenueCode}_R`;
+            Object.keys(allRaceNotes).forEach(k => {
+                if (k.startsWith(prefix)) {
+                    const n = allRaceNotes[k];
+                    n.rank1 = '';
+                    n.rank2 = '';
+                    n.rank3 = '';
+                    n.rank4 = '';
+                    n.untrust1 = '';
+                    n.untrust2 = '';
+                    n.remark = '';
+                }
+            });
+            saveAllNotes();
+            renderBottomPickPanel();
+            renderNotesOverview();
+
+            document.getElementById('popupTitle').textContent = '已完成';
+            document.getElementById('popupMessage').textContent = '已清空全部心水及不信任馬。';
+            document.getElementById('popupConfirmButtons').classList.add('hidden');
+            document.getElementById('popupDoneButtons').classList.remove('hidden');
+        }
+
+        // 💡 當賽果出現時，自動記低入名次馬匹完整資料（檔位、騎師、練馬師、名次、賠率等）
+        function captureResultSnapshotForRace(raceObj) {
+            if (!raceObj || !Array.isArray(raceObj.runners) || raceObj.runners.length === 0) return;
+
+            const rawStatus = (raceObj.status || '').toUpperCase();
+            const placedRunners = raceObj.runners
+                .map((r, idx) => {
+                    const posNum = parseInt(r.finalPosition, 10);
+                    const reserveFlag = isReserveHorse(r);
+                    const numKey = normalizeNo(r.horseNo);
+                    const fallbackKey = numKey || (r.horseName ? `RES_${idx}_${String(r.horseName).trim()}` : `RES_${idx}`);
+                    return {
+                        pos: (!isNaN(posNum) && posNum > 0) ? posNum : null,
+                        posText: (r.finalPosition && String(r.finalPosition).trim() !== '' && String(r.finalPosition).trim() !== '-')
+                            ? String(r.finalPosition).trim()
+                            : '',
+                        horseNo: String(r.horseNo || '').trim(),
+                        noKey: fallbackKey,
+                        horseName: String(r.horseName || '').trim(),
+                        isReserve: reserveFlag,
+                        draw: String(r.draw || '-').trim(),
+                        weight: String(r.weight || '-').trim(),
+                        jockey: String(r.jockey || '-').trim(),
+                        trainer: String(r.trainer || '-').trim(),
+                        winOdds: String(r.winOdds || '-').trim(),
+                        plaOdds: String(r.plaOdds || '-').trim()
+                    };
+                })
+                .filter(item => item.pos !== null || (rawStatus === 'RESULT' && item.posText !== ''));
+
+            if (placedRunners.length === 0 && rawStatus !== 'RESULT') return;
+
+            placedRunners.sort((a, b) => {
+                if (a.pos !== null && b.pos !== null) return a.pos - b.pos;
+                if (a.pos !== null) return -1;
+                if (b.pos !== null) return 1;
+                return (parseInt(a.horseNo, 10) || 99) - (parseInt(b.horseNo, 10) || 99);
+            });
+
+            const allRunnersMap = {};
+            raceObj.runners.forEach((r, idx) => {
+                const numKey = normalizeNo(r.horseNo);
+                const k = numKey || (r.horseName ? `RES_${idx}_${String(r.horseName).trim()}` : `RES_${idx}`);
+                if (k) {
+                    const pNum = parseInt(r.finalPosition, 10);
+                    const entry = {
+                        pos: (!isNaN(pNum) && pNum > 0) ? pNum : null,
+                        posText: (r.finalPosition && String(r.finalPosition).trim() !== '-' && String(r.finalPosition).trim() !== '')
+                            ? String(r.finalPosition).trim()
+                            : '-',
+                        horseNo: String(r.horseNo || '').trim(),
+                        horseName: String(r.horseName || '').trim(),
+                        isReserve: isReserveHorse(r),
+                        draw: String(r.draw || '-').trim(),
+                        weight: String(r.weight || '-').trim(),
+                        jockey: String(r.jockey || '-').trim(),
+                        trainer: String(r.trainer || '-').trim(),
+                        winOdds: String(r.winOdds || '-').trim(),
+                        plaOdds: String(r.plaOdds || '-').trim()
+                    };
+                    allRunnersMap[k] = entry;
+                    if (numKey) allRunnersMap[numKey] = entry;
+                }
+            });
+
+            const key = getNoteKey(raceObj.raceNo);
+            const note = ensureNoteRecord(raceObj.raceNo);
+            note.raceNo = normalizeNo(raceObj.raceNo) || String(raceObj.raceNo);
+            note.resultSnapshot = {
+                capturedAt: new Date().toISOString(),
+                status: raceObj.status || 'RESULT',
+                placedRunners,
+                allRunnersMap
+            };
+            allRaceNotes[key] = note;
+            saveAllNotes();
+        }
+
+        function toggleAllNoteCards(expand) {
+            const raceNos = collectOverviewRaceNos();
+            raceNos.forEach(rNo => {
+                expandedRaceNos[rNo] = expand;
+            });
+            renderNotesOverview();
+        }
+
+        function toggleSingleNoteCard(rNo) {
+            const current = expandedRaceNos[rNo] !== false;
+            expandedRaceNos[rNo] = !current;
+            renderNotesOverview();
+        }
+
+        function collectOverviewRaceNos() {
+            const set = new Set();
+            globalRacesData.forEach(r => {
+                const n = parseInt(r.raceNo, 10);
+                if (!isNaN(n)) set.add(n);
+            });
+            const prefix = `${currentMeetingDate}_${currentVenueCode}_R`;
+            Object.keys(allRaceNotes).forEach(k => {
+                if (k.startsWith(prefix)) {
+                    const n = parseInt(k.slice(prefix.length), 10);
+                    if (!isNaN(n)) set.add(n);
+                }
+            });
+            return Array.from(set).sort((a, b) => a - b);
+        }
+
+        function getEffectivePlacedList(liveRace, snap) {
+            let placedList = [];
+            if (liveRace && Array.isArray(liveRace.runners)) {
+                placedList = liveRace.runners
+                    .map((r, idx) => {
+                        const pNum = parseInt(r.finalPosition, 10);
+                        const numKey = normalizeNo(r.horseNo);
+                        return {
+                            pos: (!isNaN(pNum) && pNum > 0) ? pNum : null,
+                            posText: (r.finalPosition && String(r.finalPosition).trim() !== '-' && String(r.finalPosition).trim() !== '')
+                                ? String(r.finalPosition).trim()
+                                : '',
+                            horseNo: String(r.horseNo || '').trim(),
+                            noKey: numKey || (r.horseName ? `RES_${idx}_${String(r.horseName).trim()}` : `RES_${idx}`),
+                            horseName: String(r.horseName || '').trim(),
+                            isReserve: isReserveHorse(r),
+                            draw: String(r.draw || '-').trim(),
+                            jockey: String(r.jockey || '-').trim(),
+                            trainer: String(r.trainer || '-').trim(),
+                            winOdds: String(r.winOdds || '-').trim()
+                        };
+                    })
+                    .filter(x => x.pos !== null || x.posText !== '')
+                    .sort((a, b) => {
+                        if (a.pos !== null && b.pos !== null) return a.pos - b.pos;
+                        if (a.pos !== null) return -1;
+                        if (b.pos !== null) return 1;
+                        return (parseInt(a.horseNo, 10) || 99) - (parseInt(b.horseNo, 10) || 99);
+                    });
+            }
+            if (placedList.length === 0 && snap && Array.isArray(snap.placedRunners) && snap.placedRunners.length > 0) {
+                placedList = snap.placedRunners;
+            }
+            return placedList;
+        }
+
+        function buildHorseLookup(snap, liveRace) {
+            const horseLookup = {};
+            if (snap && snap.allRunnersMap) {
+                Object.assign(horseLookup, snap.allRunnersMap);
+            }
+            if (liveRace && Array.isArray(liveRace.runners)) {
+                liveRace.runners.forEach((r, idx) => {
+                    const numKey = normalizeNo(r.horseNo);
+                    const k = numKey || (r.horseName ? `RES_${idx}_${String(r.horseName).trim()}` : `RES_${idx}`);
+                    if (!k) return;
+                    const pNum = parseInt(r.finalPosition, 10);
+                    const entry = {
+                        pos: (!isNaN(pNum) && pNum > 0) ? pNum : (horseLookup[k]?.pos ?? null),
+                        posText: (r.finalPosition && String(r.finalPosition).trim() !== '-' && String(r.finalPosition).trim() !== '')
+                            ? String(r.finalPosition).trim()
+                            : (horseLookup[k]?.posText || '-'),
+                        horseNo: String(r.horseNo || '').trim(),
+                        horseName: String(r.horseName || '').trim(),
+                        isReserve: isReserveHorse(r),
+                        draw: String(r.draw || '-').trim(),
+                        weight: String(r.weight || '-').trim(),
+                        jockey: String(r.jockey || '-').trim(),
+                        trainer: String(r.trainer || '-').trim(),
+                        winOdds: String(r.winOdds || '-').trim(),
+                        plaOdds: String(r.plaOdds || '-').trim()
+                    };
+                    horseLookup[k] = entry;
+                    if (numKey) horseLookup[numKey] = entry;
+                });
+            }
+            return horseLookup;
+        }
+
+        // 💡 筆記頁：總括 Table（含第1至4名 + 不信任馬）+ 每場對照
+        function renderNotesOverview() {
+            renderNotesMeetingBadges();
+
+            const titleEl = document.getElementById('notesOverviewTitle');
+            if (titleEl) {
+                titleEl.textContent = `${formatMeetingDateStr(currentMeetingDate)}（${currentVenueCode}）筆記與賽果`;
+            }
+
+            const summaryTbody = document.getElementById('notesSummaryTableBody');
+            const container = document.getElementById('allRacesNotesOverviewContainer');
+            summaryTbody.innerHTML = '';
+            container.innerHTML = '';
+
+            const raceNos = collectOverviewRaceNos();
+            if (raceNos.length === 0) {
+                summaryTbody.innerHTML = `<tr><td colspan="6" class="py-3 px-2.5 text-center text-gray-400">暫無場次資料</td></tr>`;
+                container.innerHTML = `<div class="bg-white border border-gray-200 rounded-lg p-5 text-center text-sm text-gray-500">暫未有場次或揀馬筆記。</div>`;
+                return;
+            }
+
+            raceNos.forEach(rNo => {
+                const note = allRaceNotes[getNoteKey(rNo)] || {};
+                const liveRace = globalRacesData.find(r => parseInt(r.raceNo, 10) === rNo) || null;
+                if (liveRace) captureResultSnapshotForRace(liveRace);
+
+                const updatedNote = allRaceNotes[getNoteKey(rNo)] || note;
+                const snap = updatedNote.resultSnapshot || null;
+                const horseLookup = buildHorseLookup(snap, liveRace);
+
+                const r1Val = String(updatedNote.rank1 || '').trim();
+                const r2Val = String(updatedNote.rank2 || '').trim();
+                const r3Val = String(updatedNote.rank3 || '').trim();
+                const r4Val = String(updatedNote.rank4 || '').trim();
+                const untrusts = [String(updatedNote.untrust1 || '').trim(), String(updatedNote.untrust2 || '').trim()].filter(Boolean);
+
+                const fmtCell = (val) => {
+                    if (!val) return '<span class="text-gray-300">-</span>';
+                    const info = horseLookup[val] || horseLookup[normalizeNo(val)];
+                    return `<span class="font-bold text-gray-900">${escapeHtml(formatHorseLabel(val, info))}</span>`;
+                };
+
+                const fmtUntrustCell = () => {
+                    if (untrusts.length === 0) return '<span class="text-gray-300">-</span>';
+                    return untrusts.map(uVal => {
+                        const info = horseLookup[uVal] || horseLookup[normalizeNo(uVal)];
+                        return `<span class="inline-block font-bold text-red-800 bg-red-50 border border-red-200 rounded px-1 py-0.5 mr-1">${escapeHtml(formatHorseLabel(uVal, info))}</span>`;
+                    }).join('');
+                };
+
+                const sumTr = document.createElement('tr');
+                sumTr.className = 'hover:bg-slate-50';
+                sumTr.innerHTML = `
+                    <td class="py-1.5 px-2 md:px-2.5 font-extrabold text-blue-950">R${rNo}</td>
+                    <td class="py-1.5 px-2 md:px-2.5">${fmtCell(r1Val)}</td>
+                    <td class="py-1.5 px-2 md:px-2.5">${fmtCell(r2Val)}</td>
+                    <td class="py-1.5 px-2 md:px-2.5">${fmtCell(r3Val)}</td>
+                    <td class="py-1.5 px-2 md:px-2.5">${fmtCell(r4Val)}</td>
+                    <td class="py-1.5 px-2 md:px-2.5">${fmtUntrustCell()}</td>
+                `;
+                summaryTbody.appendChild(sumTr);
+
+                const placedList = getEffectivePlacedList(liveRace, snap);
+
+                const picks = [
+                    { headerLabel: '第 1 名', colorClass: 'text-amber-700', val: r1Val, expectedPos: 1 },
+                    { headerLabel: '第 2 名', colorClass: 'text-slate-700', val: r2Val, expectedPos: 2 },
+                    { headerLabel: '第 3 名', colorClass: 'text-orange-700', val: r3Val, expectedPos: 3 },
+                    { headerLabel: '第 4 名', colorClass: 'text-blue-800', val: r4Val, expectedPos: 4 }
+                ];
+
+                const isExpanded = expandedRaceNos[rNo] !== false;
+                const card = document.createElement('div');
+                card.className = 'bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden';
+
+                // 電腦版專用：第 1–4 名 Header 列 + 4 欄卡片
+                const picksHeaderHtml = picks.map(p =>
+                    `<div class="text-[11px] font-bold ${p.colorClass} px-1">${p.headerLabel}</div>`
+                ).join('');
+
+                const picksDesktopGridHtml = picks.map(p => {
+                    if (!p.val) {
+                        return `<div class="flex items-center justify-between text-xs bg-slate-50 px-2.5 py-1.5 rounded border border-slate-200 text-gray-400"><span>未揀</span></div>`;
+                    }
+                    const h = horseLookup[p.val] || horseLookup[normalizeNo(p.val)];
+                    const actualPos = h ? h.pos : null;
+                    let badge = '<span class="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-bold text-[11px]">待賽果</span>';
+                    if (actualPos !== null) {
+                        if (actualPos === p.expectedPos) {
+                            badge = `<span class="px-1.5 py-0.5 rounded bg-emerald-600 text-white font-bold text-[11px]">中第${actualPos}名</span>`;
+                        } else if (actualPos >= 1 && actualPos <= 4) {
+                            badge = `<span class="px-1.5 py-0.5 rounded bg-blue-600 text-white font-bold text-[11px]">入圍第${actualPos}名</span>`;
+                        } else {
+                            badge = `<span class="px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 font-bold text-[11px]">第${actualPos}名</span>`;
+                        }
+                    }
+                    const metaExtra = h ? ` <span class="text-[11px] text-gray-500">(${h.draw}檔·${h.jockey})</span>` : '';
+                    return `
+                        <div class="flex items-center justify-between gap-1.5 text-xs bg-slate-50 px-2.5 py-1.5 rounded border border-slate-200">
+                            <div class="truncate">
+                                <span class="font-semibold text-gray-900">${escapeHtml(formatHorseLabel(p.val, h))}</span>${metaExtra}
+                            </div>
+                            <div class="flex-shrink-0">${badge}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                // 手機版專用：每個名次獨立一行顯示「第 X 名：馬號 馬名 (檔·騎) + 賽果 Badge」
+                const picksMobileListHtml = picks.map(p => {
+                    if (!p.val) {
+                        return `
+                            <div class="flex items-center justify-between gap-2 text-xs bg-slate-50 px-2.5 py-1.5 rounded border border-slate-200 text-gray-400">
+                                <span><strong class="${p.colorClass}">${p.headerLabel}：</strong>未揀</span>
+                            </div>
+                        `;
+                    }
+                    const h = horseLookup[p.val] || horseLookup[normalizeNo(p.val)];
+                    const actualPos = h ? h.pos : null;
+                    let badge = '<span class="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-bold text-[11px]">待賽果</span>';
+                    if (actualPos !== null) {
+                        if (actualPos === p.expectedPos) {
+                            badge = `<span class="px-1.5 py-0.5 rounded bg-emerald-600 text-white font-bold text-[11px]">中第${actualPos}名</span>`;
+                        } else if (actualPos >= 1 && actualPos <= 4) {
+                            badge = `<span class="px-1.5 py-0.5 rounded bg-blue-600 text-white font-bold text-[11px]">入圍第${actualPos}名</span>`;
+                        } else {
+                            badge = `<span class="px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 font-bold text-[11px]">第${actualPos}名</span>`;
+                        }
+                    }
+                    const metaExtra = h ? ` <span class="text-[11px] text-gray-500">(${h.draw}檔·${h.jockey})</span>` : '';
+                    return `
+                        <div class="flex items-center justify-between gap-2 text-xs bg-slate-50 px-2.5 py-1.5 rounded border border-slate-200">
+                            <div class="truncate">
+                                <strong class="${p.colorClass}">${p.headerLabel}：</strong>
+                                <span class="font-semibold text-gray-900">${escapeHtml(formatHorseLabel(p.val, h))}</span>${metaExtra}
+                            </div>
+                            <div class="flex-shrink-0">${badge}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                // 不可信任馬匹 & 備註
+                const untrustItemsHtml = untrusts.length > 0
+                    ? untrusts.map((uVal, idx) => {
+                        const h = horseLookup[uVal] || horseLookup[normalizeNo(uVal)];
+                        const actualPos = h ? h.pos : null;
+                        let badge = '<span class="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-bold text-[11px]">待賽果</span>';
+                        if (actualPos !== null) {
+                            badge = (actualPos >= 1 && actualPos <= 4)
+                                ? `<span class="px-1.5 py-0.5 rounded bg-red-600 text-white font-bold text-[11px]">跑第${actualPos}名</span>`
+                                : `<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[11px]">唔信中(第${actualPos}名)</span>`;
+                        }
+                        return `
+                            <div class="flex items-center justify-between gap-2 text-xs bg-red-50/40 px-2.5 py-1.5 rounded border border-red-200">
+                                <div class="truncate">
+                                    <strong class="text-red-800">不可信任 ${idx + 1}：</strong>
+                                    <span class="font-semibold text-gray-900">${escapeHtml(formatHorseLabel(uVal, h))}</span>
+                                </div>
+                                <div class="flex-shrink-0">${badge}</div>
+                            </div>
+                        `;
+                    }).join('')
+                    : `<div class="text-xs text-gray-400 bg-slate-50 px-2.5 py-1.5 rounded border border-slate-200">未有填寫唔信馬</div>`;
+
+                const remarkHtml = (updatedNote.remark && updatedNote.remark.trim())
+                    ? `<div class="text-xs bg-amber-50 px-2.5 py-1.5 rounded border border-amber-200 text-amber-950"><strong>備註：</strong>${escapeHtml(updatedNote.remark.trim())}</div>`
+                    : '';
+
+                const placedRowsHtml = placedList.length > 0
+                    ? placedList.map(item => {
+                        const isPickedRank = picks.some(p => p.val && (p.val === item.noKey || (normalizeNo(p.val) && normalizeNo(p.val) === normalizeNo(item.noKey))));
+                        const isUntrust = untrusts.some(u => u === item.noKey || (normalizeNo(u) && normalizeNo(u) === normalizeNo(item.noKey)));
+                        const markBadges = [
+                            isPickedRank ? '<span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-900 font-bold text-[10px]">心水</span>' : '',
+                            isUntrust ? '<span class="px-1.5 py-0.5 rounded bg-red-100 text-red-800 font-bold text-[10px]">唔信</span>' : ''
+                        ].filter(Boolean).join(' ');
+
+                        const noColLabel = item.isReserve ? '後備' : escapeHtml(item.horseNo);
+
+                        return `
+                            <tr class="${isPickedRank ? 'bg-emerald-50/50' : ''}">
+                                <td class="py-1 px-2 text-center font-extrabold text-blue-950">${escapeHtml(item.posText || item.pos || '-')}</td>
+                                <td class="py-1 px-2 text-center font-bold">${noColLabel}</td>
+                                <td class="py-1 px-2 font-semibold text-gray-900">${escapeHtml(item.horseName)}</td>
+                                <td class="py-1 px-2 text-center text-gray-700">${escapeHtml(item.draw)}</td>
+                                <td class="py-1 px-2 text-gray-800">${escapeHtml(item.jockey)}</td>
+                                <td class="py-1 px-2 text-gray-700">${escapeHtml(item.trainer)}</td>
+                                <td class="py-1 px-2 text-right font-mono">${escapeHtml(item.winOdds)}</td>
+                                <td class="py-1 px-2">${markBadges || '<span class="text-gray-300">-</span>'}</td>
+                            </tr>
+                        `;
+                    }).join('')
+                    : `<tr><td colspan="8" class="py-2.5 px-2 text-center text-gray-400">尚未有本場名次賽果</td></tr>`;
+
+                const statusChip = placedList.length > 0
+                    ? `<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[11px]">有賽果</span>`
+                    : '';
+
+                card.innerHTML = `
+                    <div onclick="toggleSingleNoteCard(${rNo})" class="px-3 py-2 bg-slate-50 border-b border-gray-200 flex items-center justify-between gap-2 cursor-pointer select-none">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-extrabold text-sm text-blue-950">第 ${rNo} 場</span>
+                            ${statusChip}
+                        </div>
+                        <span class="text-xs font-bold text-slate-600">${isExpanded ? '▲ 收合' : '▼ 展開'}</span>
+                    </div>
+                    <div class="${isExpanded ? 'p-3 space-y-3' : 'hidden'}">
+                        <!-- 1. 上：揀選心水 -->
+                        <div class="space-y-1">
+                            <div class="text-xs font-bold text-slate-700">揀選心水</div>
+                            <div class="block md:hidden space-y-1.5 pt-0.5">${picksMobileListHtml}</div>
+                            <div class="hidden md:grid md:grid-cols-4 gap-2 pt-0.5">${picksHeaderHtml}</div>
+                            <div class="hidden md:grid md:grid-cols-4 gap-2">${picksDesktopGridHtml}</div>
+                        </div>
+
+                        <!-- 2. 下：不可信任馬匹 & 備註 -->
+                        <div class="space-y-1">
+                            <div class="text-xs font-bold text-red-700">不可信任馬匹 &amp; 備註</div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">${untrustItemsHtml}</div>
+                            ${remarkHtml}
+                        </div>
+
+                        <!-- 3. 賽果名次對照 -->
+                        <div>
+                            <div class="text-xs font-bold text-slate-700 mb-1">賽果名次馬匹</div>
+                            <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table class="w-full text-left border-collapse text-xs whitespace-nowrap">
+                                    <thead>
+                                        <tr class="bg-gray-100 text-gray-700 border-b border-gray-200">
+                                            <th class="py-1 px-2 text-center">名次</th>
+                                            <th class="py-1 px-2 text-center">馬號</th>
+                                            <th class="py-1 px-2">馬名</th>
+                                            <th class="py-1 px-2 text-center">檔位</th>
+                                            <th class="py-1 px-2">騎師</th>
+                                            <th class="py-1 px-2">練馬師</th>
+                                            <th class="py-1 px-2 text-right">獨贏</th>
+                                            <th class="py-1 px-2">對照</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 bg-white">${placedRowsHtml}</tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // 💡 統一切換場次函數（點擊圓圈 & 左右掃共用）
+        function switchRaceByIndex(newIndex) {
+            if (globalRacesData.length === 0) return;
+            if (newIndex < 0 || newIndex >= globalRacesData.length) return;
+            if (newIndex === selectedRaceIndex) return;
+
+            selectedRaceIndex = newIndex;
+            renderRaceTabs();
+            renderRaceViews();
+            renderBottomPickPanel();
+            scrollToTop();
+            fetchCurrentRaceOdds();
+            fetchScrapedRaceMeta();
+        }
+
+        // 💡 監聽手機觸控手勢：向左掃 -> 下一場，向右掃 -> 上一場
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length !== 1) return;
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            touchStartTarget = e.target;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            if (!touchStartTarget || e.changedTouches.length !== 1) return;
+
+            if (touchStartTarget.closest('.overflow-x-auto') || touchStartTarget.closest('select, input, textarea')) {
+                touchStartTarget = null;
+                return;
+            }
+
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+
+            touchStartTarget = null;
+
+            const minSwipeDistance = 60;
+            const isHorizontalSwipe = Math.abs(deltaX) > minSwipeDistance && Math.abs(deltaX) > Math.abs(deltaY) * 1.3;
+
+            if (!isHorizontalSwipe) return;
+
+            if (deltaX < 0) {
+                switchRaceByIndex(selectedRaceIndex + 1);
+            } else {
+                switchRaceByIndex(selectedRaceIndex - 1);
+            }
+        }, { passive: true });
 
         function formatMeetingDateStr(dateStr) {
             if (!dateStr) return '--';
@@ -224,8 +1157,6 @@
             const actualInterval = isLocalMeeting ? intervalSeconds : 25;
 
             autoRefreshTimer = setInterval(() => {
-                // 💡 修正：由原本只刷賠率（fetchCurrentRaceOdds），改為完整重刷（fetchFullData），
-                // 這樣每次自動 refresh 時，官方的 status、sellStatus 以及賠率都會同步更新！
                 fetchFullData();
             }, actualInterval * 1000);
         }
@@ -233,23 +1164,33 @@
         function renderDefaultGearConfig() {
             const defaults = [
                 { code: "B", name: "戴眼罩" },
-                { code: "BO", name: "戴單邊眼罩" },
-                { code: "H", name: "戴頭罩" },
-                { code: "P", name: "戴防砂眼罩" },
-                { code: "TT", name: "綁舌帶" },
-                { code: "SR", name: "羊毛面箍" },
-                { code: "XB", name: "交叉鼻箍" },
-                { code: "PC", name: "開縫眼罩" },
-                { code: "PS", name: "遮眼頭罩" },
+                { code: "BO", name: "只戴單邊眼罩" },
+                { code: "BL", name: "戴左邊防斜跑刺墊" },
+                { code: "BR", name: "戴右邊防斜跑刺墊" },
+                { code: "BK", name: "閹駑" },
+                { code: "CC", name: "喉托" },
+                { code: "CO", name: "戴單邊羊毛面箍" },
+                { code: "CP", name: "羊毛面箍" },
                 { code: "E", name: "戴耳塞" },
-                { code: "V", name: "戴開縫頭罩" },
-                { code: "CP", name: "羊毛眉眼罩" }
+                { code: "H", name: "戴頭罩" },
+                { code: "P", name: "戴防沙眼罩" },
+                { code: "PC", name: "戴半掩防沙眼罩" },
+                { code: "PS", name: "戴單邊半掩防沙眼罩" },
+                { code: "SB", name: "戴羊毛額箍" },
+                { code: "SR", name: "鼻箍" },
+                { code: "TT", name: "綁繫舌帶" },
+                { code: "V", name: "戴開縫眼罩" },
+                { code: "VO", name: "戴單邊開縫眼罩" },
+                { code: "XB", name: "交叉鼻箍" },
+                { code: "\"1\"", name: "首次" },
+                { code: "\"2\"", name: "重戴" },
+                { code: "\"-\"", name: "除去" }
             ];
             const container = document.getElementById('gearConfigContainer');
             container.innerHTML = '';
             defaults.forEach(item => {
                 const div = document.createElement('div');
-                div.innerHTML = `<span class="font-bold text-black">${item.code}:</span> ${item.name}`;
+                div.innerHTML = `<span class="font-bold text-black">${escapeHtml(item.code)} :</span> ${escapeHtml(item.name)}`;
                 container.appendChild(div);
             });
         }
@@ -270,6 +1211,7 @@
                 ];
             }
             renderMeetingBadges();
+            renderNotesMeetingBadges();
             fetchFullData();
         }
 
@@ -278,13 +1220,9 @@
             container.innerHTML = '';
             meetingsList.forEach(m => {
                 const isSelected = (m.date === currentMeetingDate && m.venue === currentVenueCode);
-                let displayName = m.venue;
-                if (m.venue === 'ST') displayName = '田';
-                if (m.venue === 'HV') displayName = '谷';
-
                 const badge = document.createElement('div');
                 badge.className = `circle-badge ${isSelected ? 'circle-badge-active' : 'circle-badge-inactive'}`;
-                badge.textContent = displayName;
+                badge.textContent = getMeetingBadgeText(m.venue);
                 badge.title = `${m.date} (${m.venue})`;
 
                 badge.onclick = () => {
@@ -292,7 +1230,9 @@
                         currentMeetingDate = m.date;
                         currentVenueCode = m.venue;
                         selectedRaceIndex = 0;
+                        expandedRaceNos = {};
                         renderMeetingBadges();
+                        renderNotesMeetingBadges();
                         scrollToTop();
                         fetchFullData();
                         startAutoRefresh(15);
@@ -315,9 +1255,13 @@
 
                 if (data.status === 'success') {
                     globalRacesData = data.races || [];
+                    globalRacesData.forEach(r => captureResultSnapshotForRace(r));
                     statusIndicator.className = "inline-block w-2 h-2 rounded-full bg-green-500";
                     renderRaceTabs();
                     renderRaceViews();
+                    renderBottomPickPanel();
+                    renderNotesMeetingBadges();
+                    if (pageMode === 'notes') renderNotesOverview();
                     fetchCurrentRaceOdds();
                     fetchScrapedRaceMeta();
 
@@ -383,7 +1327,6 @@
                 const pmPools = data?.data?.raceMeetings?.[0]?.pmPools || [];
                 const winMap = {};
                 const plaMap = {};
-                const normalizeNo = (str) => String(str || '').replace(/^0+/, '').trim();
 
                 pmPools.forEach(pool => {
                     if (pool.oddsNodes) {
@@ -398,7 +1341,8 @@
                     }
                 });
 
-                const runners = globalRacesData[selectedRaceIndex].runners;
+                const raceObj = globalRacesData[selectedRaceIndex];
+                const runners = raceObj.runners;
                 let gotValidOdds = false;
                 
                 runners.forEach(r => {
@@ -414,11 +1358,14 @@
                 });
 
                 if (gotValidOdds) {
-                    const cacheKey = `${currentMeetingDate}_${currentVenueCode}_${globalRacesData[selectedRaceIndex].raceNo}`;
+                    const cacheKey = `${currentMeetingDate}_${currentVenueCode}_${raceObj.raceNo}`;
                     openedRacesCache[cacheKey] = true;
                 }
 
+                captureResultSnapshotForRace(raceObj);
                 renderRaceViews();
+                if (pageMode === 'notes') renderNotesOverview();
+
                 const now = new Date();
                 document.getElementById('lastUpdateTime').textContent = `最後更新: ${now.toTimeString().split(' ')[0]}`;
             } catch (err) {
@@ -446,6 +1393,8 @@
             const banner = document.getElementById('currentRaceStatusBanner');
             banner.textContent = '狀態: 無資料';
             banner.className = 'text-xs font-bold px-3 py-1 bg-gray-200 text-gray-700 rounded-md shadow-sm';
+            renderBottomPickPanel();
+            if (pageMode === 'notes') renderNotesOverview();
         }
 
         function renderRaceTabs() {
@@ -464,12 +1413,7 @@
                 activeBar.className = isSelected ? "race-active-bar" : "h-1 w-6 mt-1 bg-transparent";
 
                 wrapper.onclick = () => {
-                    selectedRaceIndex = idx;
-                    renderRaceTabs();
-                    renderRaceViews();
-                    scrollToTop();
-                    fetchCurrentRaceOdds();
-                    fetchScrapedRaceMeta();
+                    switchRaceByIndex(idx);
                 };
                 wrapper.appendChild(badge);
                 wrapper.appendChild(activeBar);
@@ -498,7 +1442,6 @@
             const cacheKey = `${currentMeetingDate}_${currentVenueCode}_${race.raceNo}`;
             const hasOdds = race.runners && race.runners.some(r => r.winOdds && r.winOdds !== '-' && r.winOdds !== 'SCR');
             
-            // 💡 關鍵修正：加入 sellStatus === "STOP_SELL"，防止帶賠率時把封盤狀態覆蓋為接受投注
             const isClosedStatus = ["CLOSED", "SUSPENDED", "LOCKED", "RESULT", "COMPLETED", "OFF"].includes(rawStatus) || rawSellStatus === "STOP_SELL";
             const isSelling = !isClosedStatus && (hasOdds || openedRacesCache[cacheKey]);
 
@@ -576,8 +1519,8 @@
 
                 itemDiv.className = isScr ? "bg-gray-50 p-3 text-gray-400" : "p-3.5 hover:bg-slate-50 transition";
                 
-                const shortJockey = (r.jockey && r.jockey !== '-') ? r.jockey.charAt(0) : '-';
-                const shortTrainer = (r.trainer && r.trainer !== '-') ? r.trainer.charAt(0) : '-';
+                const shortJockey = (r.jockey && r.jockey !== '-') ? r.jockey.slice(0, 2) : '-';
+                const shortTrainer = (r.trainer && r.trainer !== '-') ? r.trainer.slice(0, 2) : '-';
 
                 if (isScr) {
                     itemDiv.innerHTML = `
